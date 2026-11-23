@@ -29,7 +29,7 @@ namespace SpinArena.Live
 
         public void OnTaps(LiveUser user, int count)
         {
-            if (user == null || string.IsNullOrEmpty(user.Key)) return;
+            if (user == null || string.IsNullOrEmpty(user.Key) || !_fx.tapsEnabled) return;
             _players.MarkActive(user.Key);
             if (_round != _br.Round.RoundNumber) { _pending.Clear(); _round = _br.Round.RoundNumber; }
             var top = _br.TopOf(user.Key);

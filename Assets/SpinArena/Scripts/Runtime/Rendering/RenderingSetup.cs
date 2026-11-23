@@ -35,6 +35,16 @@ namespace SpinArena.Rendering
             color.contrast.Override(8f);
             color.postExposure.Override(0.15f);
             vol.sharedProfile = profile;
+            _volume = vol;
+        }
+
+        static Volume _volume;
+
+        /// <summary>Qualité graphique réglable dans les options : lueurs, échelle de rendu.</summary>
+        public static void ApplyQuality(bool bloom, float renderScale)
+        {
+            if (_volume != null) _volume.enabled = bloom;
+            if (GraphicsSettings.currentRenderPipeline is UniversalRenderPipelineAsset urp) urp.renderScale = Mathf.Clamp(renderScale, 0.5f, 1f);
         }
     }
 }

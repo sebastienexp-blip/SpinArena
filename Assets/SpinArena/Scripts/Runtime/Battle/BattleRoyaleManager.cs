@@ -146,7 +146,7 @@ namespace SpinArena.Battle
                     _countdownAnnounced = false;
                     break;
                 case RoundPhase.Fighting:
-                    foreach (var t in _tops.Values) t.Launch(7.5f);
+                    foreach (var t in _tops.Values) t.Launch(_cfg.tuning.launchPower);
                     AudioManager.Play("go", 1f, 0.5f, 0f);
                     AudioManager.Play("launch", 0.8f, 0.5f, 0f);
                     _hud.Banner("LANCEZ !", Round.Participants.Count + " toupies dans l'arène", 1.6f, new Color(1f, 0.85f, 0.3f));

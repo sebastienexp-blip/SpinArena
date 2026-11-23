@@ -19,7 +19,7 @@ Jeu de combat de toupies fantastiques en 3D (Unity 6, URP) où tous les spectate
 2. Lancer TikTok LIVE en mode Jeu mobile, puis ouvrir Spin Arena.
 3. Les spectateurs écrivent `!join`.
 
-Administration : 3 tapotements rapides dans le coin en haut à gauche.
+Options (10 onglets) : 3 tapotements rapides dans le coin en haut à gauche.
 
 ## Développement
 

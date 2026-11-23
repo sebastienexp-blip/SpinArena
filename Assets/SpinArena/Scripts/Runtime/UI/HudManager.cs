@@ -30,6 +30,7 @@ namespace SpinArena.UI
 
         sealed class Row { public RectTransform root; public RawImage avatar; public Text name; public Image bar; public Text level; }
         readonly List<Row> _rows = new List<Row>();
+        Image _hintPanel;
         RectTransform _giftCard;
         CanvasGroup _giftGroup;
         RawImage _giftIcon;
@@ -97,7 +98,7 @@ namespace SpinArena.UI
             _giftGroup.alpha = 0f;
 
             // Bas : invitation + état.
-            var hintPanel = UiFactory.Panel("Hint", root, bottom, bottom, new Vector2(0, 16), new Vector2(980, 66), UiFactory.PanelColor);
+            var hintPanel = _hintPanel = UiFactory.Panel("Hint", root, bottom, bottom, new Vector2(0, 16), new Vector2(980, 66), UiFactory.PanelColor);
             _hint = UiFactory.Label("HintText", hintPanel.transform, "Écris <color=#FFD54A>!join</color> dans le chat pour entrer dans l'arène", 32, TextAnchor.MiddleCenter, Color.white, center, center, Vector2.zero, new Vector2(960, 60));
             _status = UiFactory.Label("Status", root, "", 18, TextAnchor.LowerLeft, new Color(1f, 1f, 1f, 0.6f), new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(18, 10), new Vector2(560, 60));
             _demoTag = UiFactory.Label("Demo", root, "MODE DÉMO", 30, TextAnchor.LowerRight, new Color(1f, 0.35f, 0.3f), new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-20, 14), new Vector2(300, 44));
@@ -246,6 +247,13 @@ namespace SpinArena.UI
         void Update()
         {
             float t = Time.unscaledTime, dt = Time.unscaledDeltaTime;
+            var disp = GameConfig.Current.display;
+            _listRoot.gameObject.SetActive(disp.showPlayerList);
+            _hintPanel.gameObject.SetActive(disp.showHint);
+            _status.gameObject.SetActive(disp.showStatus);
+            _banner.transform.parent.gameObject.SetActive(disp.showBanners);
+            if (!disp.showGiftPopups) { _giftQueue.Clear(); _giftUntil = 0f; }
+            if (!disp.showJoinCards) { _joinQueue.Clear(); _joinUntil = 0f; }
 
             if (_bannerGroup.alpha > 0f)
             {

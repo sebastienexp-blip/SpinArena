@@ -12,18 +12,17 @@ namespace SpinArena.Audio
     {
         public static AudioManager Instance { get; private set; }
 
-        const string PrefMusic = "spin.music", PrefSfx = "spin.sfx";
         readonly Dictionary<string, AudioClip> _clips = new Dictionary<string, AudioClip>();
         readonly Dictionary<string, float> _lastPlay = new Dictionary<string, float>();
         readonly List<AudioSource> _sfx = new List<AudioSource>();
         AudioSource _musicA, _musicB, _spinLoop;
         AudioSource _current;
         string _currentTrack;
-        float _tension, _musicVolume = 0.55f;
+        float _tension;
         int _next;
 
-        public bool MusicOn { get; private set; } = true;
-        public bool SfxOn { get; private set; } = true;
+        public bool MusicOn { get => GameConfig.Current.audio.music; private set => GameConfig.Current.audio.music = value; }
+        public bool SfxOn { get => GameConfig.Current.audio.sfx; private set => GameConfig.Current.audio.sfx = value; }
         public int ClipCount => _clips.Count;
 
         void Awake()
@@ -37,8 +36,6 @@ namespace SpinArena.Audio
                 _sfx.Add(s);
             }
             _musicA = MakeLoop(); _musicB = MakeLoop(); _spinLoop = MakeLoop();
-            MusicOn = PlayerPrefs.GetInt(PrefMusic, 1) == 1;
-            SfxOn = PlayerPrefs.GetInt(PrefSfx, 1) == 1;
             if (_clips.TryGetValue("spin_loop", out var loop)) { _spinLoop.clip = loop; _spinLoop.volume = 0f; _spinLoop.Play(); }
             if (_clips.Count == 0) Debug.LogWarning("[SpinArena] Aucun son trouvé dans Resources/Audio");
         }
@@ -61,7 +58,7 @@ namespace SpinArena.Audio
             var src = a._sfx[a._next];
             a._next = (a._next + 1) % a._sfx.Count;
             src.pitch = 1f + Random.Range(-pitchJitter, pitchJitter);
-            src.PlayOneShot(clip, Mathf.Clamp01(volume));
+            src.PlayOneShot(clip, Mathf.Clamp01(volume) * GameConfig.Current.audio.sfxVolume);
         }
 
         /// <summary>Musique selon la phase de la manche ; tension 0..1 (peu de survivants, mort subite).</summary>
@@ -80,17 +77,20 @@ namespace SpinArena.Audio
             }
         }
 
-        public void SetMusic(bool on) { MusicOn = on; PlayerPrefs.SetInt(PrefMusic, on ? 1 : 0); PlayerPrefs.Save(); }
-        public void SetSfx(bool on) { SfxOn = on; PlayerPrefs.SetInt(PrefSfx, on ? 1 : 0); PlayerPrefs.Save(); }
+        public void SetMusic(bool on) { MusicOn = on; GameConfig.Current.SaveOverride(); }
+        public void SetSfx(bool on) { SfxOn = on; GameConfig.Current.SaveOverride(); }
 
         /// <summary>Volume du ronronnement des toupies (0..1 selon le nombre de toupies en jeu).</summary>
-        public void SetSpinCrowd(float amount) => _spinTarget = SfxOn ? Mathf.Clamp01(amount) * 0.35f : 0f;
+        public void SetSpinCrowd(float amount) => _spinAmount = Mathf.Clamp01(amount);
+        float _spinAmount;
         float _spinTarget;
 
         void Update()
         {
             float dt = Time.unscaledDeltaTime;
-            float vol = MusicOn ? _musicVolume * (0.85f + 0.3f * _tension) : 0f;
+            var au = GameConfig.Current.audio;
+            _spinTarget = au.sfx ? _spinAmount * au.crowdVolume : 0f;
+            float vol = MusicOn ? au.musicVolume * (0.85f + 0.3f * _tension) : 0f;
             foreach (var s in new[] { _musicA, _musicB })
             {
                 float goal = s == _current ? vol : 0f;

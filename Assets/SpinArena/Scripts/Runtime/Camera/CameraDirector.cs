@@ -49,18 +49,24 @@ namespace SpinArena.CameraRig
             if (_focus == null) _targetCloseness = Mathf.Clamp01(tension01) * 0.35f;
         }
 
-        public void Shake(float amount) => _shake = Mathf.Min(_shake + amount, 0.6f);
+        public void Shake(float amount)
+        {
+            var d = GameConfig.Current.display;
+            if (!d.cameraShake) return;
+            _shake = Mathf.Min(_shake + amount * d.shakeStrength, 0.6f * Mathf.Max(d.shakeStrength, 0.1f));
+        }
 
         void LateUpdate()
         {
             float dt = Time.unscaledDeltaTime;
-            _orbit += dt * (_focus != null ? 10f : 3.5f);
+            var disp = GameConfig.Current.display;
+            _orbit += dt * (_focus != null ? 10f : 3.5f * disp.cameraOrbit);
             _closeness = Mathf.MoveTowards(_closeness, _targetCloseness, dt * 0.6f);
             _focusPoint = _focus != null && _focus.gameObject.activeInHierarchy ? _focus.position : Vector3.zero;
             _smoothedFocus = Vector3.Lerp(_smoothedFocus, _focusPoint, 1f - Mathf.Exp(-dt * 3f));
 
             // Vue d'ensemble : toute l'arène tient dans un écran 16:9 (caméra en hauteur, inclinée).
-            float dist = Mathf.Lerp(_arenaRadius * 2.45f, 7f, _closeness);
+            float dist = Mathf.Lerp(_arenaRadius * 2.45f * Mathf.Clamp(disp.cameraDistance, 0.6f, 1.5f), 7f, _closeness);
             float pitch = Mathf.Lerp(52f, 30f, _closeness);
             Quaternion rot = Quaternion.Euler(pitch, _orbit, 0f);
             Vector3 look = Vector3.Lerp(Vector3.zero, _smoothedFocus + Vector3.up * 0.6f, Mathf.Clamp01(_closeness * 2f));

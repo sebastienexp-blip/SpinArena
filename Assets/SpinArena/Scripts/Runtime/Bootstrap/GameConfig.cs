@@ -48,11 +48,64 @@ namespace SpinArena
         public float shockwaveDamage = 0.06f;   // fraction de l'énergie max des cibles
         public float meteorDamage = 0.10f;
         public int meteorCount = 8;
+        /// <summary>Cadeaux : activés, font entrer le donateur, intensité globale, événements d'arène autorisés.</summary>
+        public bool giftsEnabled = true;
+        public bool giftJoins = true;
+        public float giftIntensity = 1f;
+        public bool arenaEvents = true;
+        public bool tapsEnabled = true;
         /// <summary>Tapotements : un palier tous les N tapotements d'un même spectateur.</summary>
         public int tapsPerBoost = 15;
-        public float tapGrowth = 0.04f;       // +4 % de taille par palier (plafond : TopController.MaxSize)
+        public float tapGrowth = 0.01f;       // +1 % de taille par palier (plafond : tuning.maxSize)
         public float tapSpinBoost = 0.02f;    // +2 % d'énergie par palier
         public float tapSpeedSeconds = 2f;    // coup de vitesse
+    }
+
+    /// <summary>Réglages de la physique et du combat (multiplicateurs, 1 = normal).</summary>
+    [Serializable]
+    public sealed class TuningSettings
+    {
+        public float damage = 1f;          // dégâts des chocs
+        public float knockback = 1f;       // force des projections
+        public float spinDecay = 1f;       // perte d'énergie naturelle
+        public float speed = 1f;           // vitesse de déplacement
+        public float topScale = 1.35f;     // taille de base des toupies
+        public float maxSize = 1.8f;       // taille maximale (tapotements, cadeaux)
+        public float launchPower = 7.5f;   // élan au lancement
+    }
+
+    /// <summary>Options d'affichage et de qualité graphique.</summary>
+    [Serializable]
+    public sealed class DisplaySettings
+    {
+        public bool showNames = true;
+        public bool showPhotos = true;
+        public bool showPlayerList = true;
+        public bool showGiftPopups = true;
+        public bool showJoinCards = true;
+        public bool showHint = true;
+        public bool showStatus = true;
+        public bool showBanners = true;
+        public bool trails = true;
+        public float particles = 1f;       // 0.25 .. 1.5
+        public bool cameraShake = true;
+        public float shakeStrength = 1f;
+        public float cameraOrbit = 1f;     // vitesse de rotation de la caméra (0 = fixe)
+        public float cameraDistance = 1f;  // 0.8 .. 1.3
+        public bool bloom = true;
+        public bool shadows = true;
+        public float renderScale = 1f;     // 0.6 .. 1
+        public int fps = 60;               // 30 ou 60
+    }
+
+    [Serializable]
+    public sealed class SoundSettings
+    {
+        public bool music = true;
+        public float musicVolume = 0.55f;
+        public bool sfx = true;
+        public float sfxVolume = 1f;
+        public float crowdVolume = 0.35f;  // ronronnement des toupies
     }
 
     /// <summary>Configuration complète, modifiable sans recompiler (Resources/Config/game_config.json).</summary>
@@ -66,6 +119,29 @@ namespace SpinArena
         public ArenaSettings arena = new ArenaSettings();
         public LiveSettings live = new LiveSettings();
         public EffectSettings effects = new EffectSettings();
+        public TuningSettings tuning = new TuningSettings();
+        public DisplaySettings display = new DisplaySettings();
+        public SoundSettings audio = new SoundSettings();
+
+        public static GameConfig Current => GameManager.Instance != null ? GameManager.Instance.Config : _fallback ?? (_fallback = new GameConfig());
+        static GameConfig _fallback;
+
+        /// <summary>Remet toutes les options aux valeurs d'origine, sans remplacer les objets (les systèmes gardent leurs références).</summary>
+        public void ResetToDefaults()
+        {
+            var d = new GameConfig();
+            var asset = Resources.Load<TextAsset>("Config/game_config");
+            if (asset != null) JsonUtility.FromJsonOverwrite(asset.text, d);
+            JsonUtility.FromJsonOverwrite(JsonUtility.ToJson(d.round), round);
+            JsonUtility.FromJsonOverwrite(JsonUtility.ToJson(d.commands), commands);
+            JsonUtility.FromJsonOverwrite(JsonUtility.ToJson(d.gifts), gifts);
+            JsonUtility.FromJsonOverwrite(JsonUtility.ToJson(d.rewards), rewards);
+            JsonUtility.FromJsonOverwrite(JsonUtility.ToJson(d.effects), effects);
+            JsonUtility.FromJsonOverwrite(JsonUtility.ToJson(d.tuning), tuning);
+            JsonUtility.FromJsonOverwrite(JsonUtility.ToJson(d.display), display);
+            JsonUtility.FromJsonOverwrite(JsonUtility.ToJson(d.audio), audio);
+            try { if (File.Exists(OverridePath)) File.Delete(OverridePath); } catch (Exception) { }
+        }
 
         public static string OverridePath => Path.Combine(Application.persistentDataPath, "game_config.json");
 

@@ -73,6 +73,7 @@ namespace SpinArena.VFX
 
         void Emit(ParticleSystem ps, Vector3 pos, int count, Color color)
         {
+            count = Mathf.RoundToInt(count * Mathf.Clamp(GameConfig.Current.display.particles, 0f, 2f));
             count = Mathf.Min(count, MaxParticlesPerFrame - _budgetThisFrame);
             if (count <= 0) return;
             _budgetThisFrame += count;

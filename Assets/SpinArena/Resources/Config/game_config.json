@@ -248,8 +248,22 @@
         "meteorDamage": 0.1,
         "meteorCount": 8,
         "tapsPerBoost": 15,
-        "tapGrowth": 0.04,
+        "tapGrowth": 0.01,
         "tapSpinBoost": 0.02,
-        "tapSpeedSeconds": 2.0
+        "tapSpeedSeconds": 2.0,
+        "giftsEnabled": true,
+        "giftJoins": true,
+        "giftIntensity": 1.0,
+        "arenaEvents": true,
+        "tapsEnabled": true
+    },
+    "tuning": {
+        "damage": 1.0,
+        "knockback": 1.0,
+        "spinDecay": 1.0,
+        "speed": 1.0,
+        "topScale": 1.35,
+        "maxSize": 1.8,
+        "launchPower": 7.5
     }
 }

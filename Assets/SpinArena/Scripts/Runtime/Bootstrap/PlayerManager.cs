@@ -83,6 +83,14 @@ namespace SpinArena
         void OnApplicationPause(bool paused) { if (paused) Save(); }
         void OnApplicationQuit() => Save();
 
+        /// <summary>Efface tous les profils (niveaux, victoires…). Une copie de secours de l'ancien fichier est gardée (.bak).</summary>
+        public void ClearAll()
+        {
+            Registry.Load(new List<PlayerProfile>());
+            _lastActive.Clear();
+            Save();
+        }
+
         public void Save()
         {
             _nextSave = Time.realtimeSinceStartup + 30f;

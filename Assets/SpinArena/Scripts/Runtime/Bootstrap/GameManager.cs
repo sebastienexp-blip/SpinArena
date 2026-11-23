@@ -82,8 +82,9 @@ namespace SpinArena
             Commands = new ChatCommandManager(Battle, Players, Config.commands);
             Taps = new TapManager(Battle, Abilities, Players, Config.effects);
             Gifts = new GiftManager(Config.gifts, Battle, Abilities, Players, Hud);
-            Child<AdminPanel>("Admin").Init(this);
+            Child<OptionsMenu>("Options").Init(this);
 
+            ApplyDisplay();
             if (LabRunner.Requested) gameObject.AddComponent<LabRunner>().Begin(this);
             else SetConnector(PlayerPrefs.GetString(PrefConnector, Config.live.connector));
         }
@@ -140,6 +141,15 @@ namespace SpinArena
                 _statusTimer = 1f;
                 Hud.SetStatus(Live.StatusText + "  ·  " + Mathf.RoundToInt(Fps) + " i/s  ·  " + Players.Registry.Count + " joueurs", Live.IsDemo);
             }
+        }
+
+        /// <summary>Applique les options d'affichage (qualité, ombres, images/s).</summary>
+        public void ApplyDisplay()
+        {
+            var d = Config.display;
+            Application.targetFrameRate = d.fps <= 30 ? 30 : 60;
+            if (Arena.KeyLight != null) Arena.KeyLight.shadows = d.shadows ? LightShadows.Soft : LightShadows.None;
+            RenderingSetup.ApplyQuality(d.bloom, d.renderScale);
         }
 
         public void SetPaused(bool paused)

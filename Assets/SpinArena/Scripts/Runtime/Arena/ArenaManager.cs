@@ -13,6 +13,7 @@ namespace SpinArena.Arena
         public ArenaSettings Settings { get; private set; }
         public float Radius => Settings.radius;
         public Color ThemeGlow { get; private set; }
+        public Light KeyLight { get; private set; }
 
         float _ledgeOuter;
         readonly List<Vector2> _pockets = new List<Vector2>(); // angles (degrés) début / fin des ouvertures
@@ -292,7 +293,7 @@ namespace SpinArena.Arena
 
         void BuildLights()
         {
-            var sun = new GameObject("KeyLight").AddComponent<Light>();
+            var sun = KeyLight = new GameObject("KeyLight").AddComponent<Light>();
             sun.transform.SetParent(transform, false);
             sun.type = LightType.Directional;
             sun.color = new Color(0.85f, 0.9f, 1f);

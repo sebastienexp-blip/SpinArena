@@ -33,9 +33,10 @@ namespace SpinArena.Live
 
         public void OnGift(LiveEvent e, double now)
         {
+            if (!GameConfig.Current.effects.giftsEnabled) return;
             _players.Touch(e.user);
             // Un spectateur qui envoie un cadeau entre dans l'arène s'il n'y est pas encore (comme avec !join).
-            if (_br.TopOf(e.user.Key) == null) _br.Join(e.user);
+            if (GameConfig.Current.effects.giftJoins && _br.TopOf(e.user.Key) == null) _br.Join(e.user);
             GiftIcons.Remember(e.giftName, e.giftImageUrl);
             _proc.Receive(e, now);
         }
@@ -51,12 +52,26 @@ namespace SpinArena.Live
             }
         }
 
+        /// <summary>Actions possibles (identifiant, nom affiché dans les options).</summary>
+        public static readonly string[] EffectIds =
+        {
+            "heal_small", "heal", "super_heal", "regen", "turbo", "rafale", "heavy", "shield", "grow", "royal",
+            "freeze", "kick", "sound_wave", "shockwave", "blast", "power_up", "special_attack", "barrage", "wheel", "meteor_storm", "tornado"
+        };
+        public static readonly string[] EffectNames =
+        {
+            "Énergie +", "Soin", "Super soin + bouclier", "Régénération", "Turbo", "Rafale", "Toupie blindée", "Bouclier", "Grossit", "Toupie royale",
+            "Gèle un adversaire", "Tir puissant", "Onde sonore", "Onde de choc", "Souffle géant", "Surpuissance", "Capacité spéciale", "Tir de barrage", "Roue au hasard", "Pluie de météores", "Tornade"
+        };
+
         static readonly string[] WheelEffects = { "heal", "turbo", "shield", "grow", "kick", "freeze", "shockwave", "heavy" };
 
         void Execute(GiftActivation a, string effect)
         {
             var t = _br.TopOf(a.userId);
-            int n = Mathf.Clamp(a.count, 1, 10);
+            var fx = GameConfig.Current.effects;
+            int n = Mathf.Clamp(Mathf.RoundToInt(a.count * fx.giftIntensity), 1, 10);
+            if (!fx.arenaEvents && (effect == "meteor_storm" || effect == "tornado")) effect = "super_heal";
             string label = Run(effect, t, n);
             if (label == null)
             {

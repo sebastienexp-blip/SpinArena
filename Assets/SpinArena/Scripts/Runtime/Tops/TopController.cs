@@ -56,8 +56,8 @@ namespace SpinArena.Tops
         float _decayFactor = 1f;
 
         /// <summary>Échelle des toupies : assez grandes pour rester lisibles sur un téléphone avec 50 toupies.</summary>
-        public const float TopScale = 1.35f;
-        const float BodyRadius = 0.42f * TopScale;
+        public static float TopScale => GameConfig.Current.tuning.topScale;
+        static float BodyRadius => 0.42f * TopScale;
 
         void Awake()
         {
@@ -172,7 +172,7 @@ namespace SpinArena.Tops
         // ------------------------------------------------------------------ taille (tapotements, cadeaux)
 
         float _size = 1f, _sizeVisual = 1f, _heavyUntil, _heavyMult = 1f, _slowUntil;
-        public const float MaxSize = 1.8f;
+        public static float MaxSize => Mathf.Max(1f, GameConfig.Current.tuning.maxSize);
         public float Size => _size;
 
         /// <summary>Grossit la toupie pour la manche en cours (plafonné). Plus grosse = plus lourde, plus dure à éjecter.</summary>
@@ -212,7 +212,7 @@ namespace SpinArena.Tops
             Vector3 tangent = Vector3.Cross(Vector3.up, p.normalized) * _orbitSign;
             _rb.SetVelocity((tangent * 0.8f - p.normalized * 0.45f) * strength * (0.85f + Def.speed / 300f));
             _trail.Clear();
-            _trail.emitting = true;
+            _trail.emitting = GameConfig.Current.display.trails;
         }
 
         public void Eliminate(bool ringOut)
@@ -307,11 +307,12 @@ namespace SpinArena.Tops
             float rel = c.relativeVelocity.Flat().magnitude;
             var atk = other.Effective;
             var def = Effective;
-            float dmg = CombatMath.ImpactDamage(atk, def, rel);
+            var tune = GameConfig.Current.tuning;
+            float dmg = CombatMath.ImpactDamage(atk, def, rel) * tune.damage;
             if (dmg <= 0f) return;
             TakeDamage(dmg, other.PlayerId);
             other.DamageDealt += dmg;
-            float knock = CombatMath.Knockback(atk, def, rel);
+            float knock = CombatMath.Knockback(atk, def, rel) * tune.knockback;
             Vector3 dir = (transform.position - other.transform.position).Flat().normalized;
             _rb.AddForce((dir + Vector3.up * 0.12f) * knock, ForceMode.Impulse);
             Impact?.Invoke(this, other, dmg, point);
@@ -381,15 +382,16 @@ namespace SpinArena.Tops
             if (State == TopState.Fighting)
             {
                 var s = Effective;
-                Spin -= CombatMath.SpinDecayPerSecond(s, _decayFactor) * Time.fixedDeltaTime;
+                var tune = GameConfig.Current.tuning;
+                Spin -= CombatMath.SpinDecayPerSecond(s, _decayFactor) * tune.spinDecay * Time.fixedDeltaTime;
                 if (Spin < 0f) Spin = 0f;
                 float vigor = Mathf.Lerp(0.35f, 1f, SpinFraction);
                 Vector3 v = _rb.GetVelocity();
                 Vector3 flat = v.Flat();
-                float max = CombatMath.MaxMoveSpeed(s) * vigor;
+                float max = CombatMath.MaxMoveSpeed(s) * vigor * tune.speed;
                 if (Slowed) max *= 0.3f;
                 if (flat.magnitude < max)
-                    _rb.AddForce(_desired * CombatMath.Acceleration(s) * vigor * (Slowed ? 0.3f : 1f), ForceMode.Acceleration);
+                    _rb.AddForce(_desired * CombatMath.Acceleration(s) * vigor * tune.speed * (Slowed ? 0.3f : 1f), ForceMode.Acceleration);
                 // Effet gyroscopique : une toupie qui tourne vite « glisse » en orbite plutôt qu'en ligne droite.
                 Vector3 orbit = Vector3.Cross(Vector3.up, flat) * (0.06f * vigor * _orbitSign);
                 _rb.AddForce(orbit, ForceMode.Acceleration);
@@ -430,8 +432,10 @@ namespace SpinArena.Tops
             if (_label != null)
             {
                 _label.color = frac < 0.25f && State == TopState.Fighting ? new Color(1f, 0.45f, 0.4f) : Color.white;
-                _label.gameObject.SetActive(State != TopState.Eliminated);
-                _photo.gameObject.SetActive(_hasPhoto && State != TopState.Eliminated);
+                var disp = GameConfig.Current.display;
+                _label.gameObject.SetActive(disp.showNames && State != TopState.Eliminated);
+                _photo.gameObject.SetActive(disp.showPhotos && _hasPhoto && State != TopState.Eliminated);
+                if (!disp.trails && _trail.emitting) _trail.emitting = false;
             }
         }
 
