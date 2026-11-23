@@ -122,10 +122,85 @@ namespace SpinArena.VFX
 
         public void Sparkle(Vector3 pos, Color c) => Emit(_beam, pos, 6, c * 1.4f);
 
+        // ------------------------------------------------------------------ tornade (entonnoir visible)
+
+        Transform _funnel;
+        Material _funnelMat;
+
+        /// <summary>Affiche l'entonnoir de la tornade (cône tournant, rayé et lumineux) à cet endroit.</summary>
+        public void ShowTornado(Vector3 center, float radius, float alpha, float phase)
+        {
+            if (_funnel == null) _funnel = BuildFunnel();
+            _funnel.gameObject.SetActive(true);
+            _funnel.position = center;
+            _funnel.localScale = new Vector3(radius, 1f, radius);
+            _funnel.rotation = Quaternion.Euler(0f, -phase * Mathf.Rad2Deg * 1.6f, 0f);
+            MaterialLibrary.SetColor(_funnelMat, new Color(0.8f, 0.72f, 1f, Mathf.Clamp01(alpha)));
+            _funnelMat.SetTextureOffset("_BaseMap", new Vector2(phase * 0.35f, -phase * 0.5f));
+        }
+
+        public void HideTornado() { if (_funnel != null) _funnel.gameObject.SetActive(false); }
+
+        Transform BuildFunnel()
+        {
+            // Cône ouvert : étroit en bas, large en haut, 8 m de haut. UV : u = tour, v = hauteur.
+            const int seg = 40, rings = 12;
+            var v = new System.Collections.Generic.List<Vector3>();
+            var uv = new System.Collections.Generic.List<Vector2>();
+            var tri = new System.Collections.Generic.List<int>();
+            for (int i = 0; i <= rings; i++)
+            {
+                float h = i / (float)rings;
+                float r = Mathf.Lerp(0.18f, 1f, h * h * 0.6f + h * 0.4f);
+                for (int j = 0; j <= seg; j++)
+                {
+                    float a = j / (float)seg * Mathf.PI * 2f;
+                    v.Add(new Vector3(Mathf.Cos(a) * r, h * 8f, Mathf.Sin(a) * r));
+                    uv.Add(new Vector2(j / (float)seg * 3f, h * 2f));
+                }
+            }
+            for (int i = 0; i < rings; i++)
+            for (int j = 0; j < seg; j++)
+            {
+                int a = i * (seg + 1) + j, b = a + 1, c = a + seg + 1, d = c + 1;
+                tri.Add(a); tri.Add(c); tri.Add(b); tri.Add(b); tri.Add(c); tri.Add(d);
+            }
+            var mesh = new Mesh { name = "Funnel" };
+            mesh.SetVertices(v); mesh.SetUVs(0, uv); mesh.SetTriangles(tri, 0);
+            mesh.RecalculateNormals(); mesh.RecalculateBounds();
+
+            // Texture rayée en diagonale (vent), transparente entre les bandes, plus légère en haut.
+            const int n = 128;
+            var tex = new Texture2D(n, n, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Repeat, name = "Wind" };
+            var px = new Color32[n * n];
+            for (int y = 0; y < n; y++)
+            for (int x = 0; x < n; x++)
+            {
+                float s = Mathf.Repeat((x + y * 0.6f) / n * 4f, 1f);
+                float band = Mathf.Clamp01(1f - Mathf.Abs(s - 0.5f) * 3.2f);
+                float noise = Mathf.Repeat(Mathf.Sin(x * 12.9898f + y * 78.233f) * 43758.5f, 1f) * 0.25f;
+                px[y * n + x] = new Color32(255, 255, 255, (byte)(Mathf.Clamp01(band * 0.85f + noise * band) * 255f));
+            }
+            tex.SetPixels32(px); tex.Apply();
+
+            var go = new GameObject("TornadoFunnel");
+            go.transform.SetParent(transform, false);
+            go.AddComponent<MeshFilter>().sharedMesh = mesh;
+            var mr = go.AddComponent<MeshRenderer>();
+            _funnelMat = new Material(MaterialLibrary.Additive(Color.white, tex));
+            if (_funnelMat.HasProperty("_Cull")) _funnelMat.SetFloat("_Cull", 0f); // visible des deux côtés
+            mr.sharedMaterial = _funnelMat;
+            mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            go.SetActive(false);
+            return go.transform;
+        }
+
         /// <summary>Entonnoir de tornade : particules en hélice qui tournent et montent (à appeler à chaque image).</summary>
         public void Vortex(Vector3 center, float radius, float phase, Color color)
         {
-            int n = Mathf.RoundToInt(10 * Mathf.Clamp(GameConfig.Current.display.particles, 0f, 2f));
+            // Nombre de particules selon le temps écoulé : même rendu quelle que soit la fluidité.
+            int n = Mathf.RoundToInt(500f * Time.deltaTime * Mathf.Clamp(GameConfig.Current.display.particles, 0f, 2f));
+            n = Mathf.Clamp(n, 1, 60);
             n = Mathf.Min(n, MaxParticlesPerFrame - _budgetThisFrame);
             if (n <= 0) return;
             _budgetThisFrame += n;

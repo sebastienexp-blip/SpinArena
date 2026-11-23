@@ -280,6 +280,8 @@ namespace SpinArena.Battle
                 c.y = arena != null ? arena.SurfaceHeight(r) : 0f;
                 spin += Time.deltaTime * 9f;
                 Vfx.Vortex(c, reach * 0.55f, spin, color);
+                float fade = Mathf.Min(1f, Mathf.Min(t, 1f - t) * 6f);
+                Vfx.ShowTornado(c, reach * 0.6f, 0.85f * fade, spin);
                 foreach (var o in _br.Fighting())
                 {
                     Vector3 d = (o.transform.position - c).Flat();
@@ -292,6 +294,7 @@ namespace SpinArena.Battle
                 }
                 yield return null;
             }
+            Vfx.HideTornado();
         }
 
         // ------------------------------------------------------------------ effets des cadeaux
