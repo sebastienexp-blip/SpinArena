@@ -48,6 +48,11 @@ namespace SpinArena
         public float shockwaveDamage = 0.06f;   // fraction de l'énergie max des cibles
         public float meteorDamage = 0.10f;
         public int meteorCount = 8;
+        /// <summary>Tapotements : un palier tous les N tapotements d'un même spectateur.</summary>
+        public int tapsPerBoost = 15;
+        public float tapGrowth = 0.04f;       // +4 % de taille par palier (plafond : TopController.MaxSize)
+        public float tapSpinBoost = 0.02f;    // +2 % d'énergie par palier
+        public float tapSpeedSeconds = 2f;    // coup de vitesse
     }
 
     /// <summary>Configuration complète, modifiable sans recompiler (Resources/Config/game_config.json).</summary>

@@ -1,6 +1,6 @@
 # Banc d'essai : lance la version Windows (release « labo-pc ») sur un serveur, en mode démo avec 50 spectateurs
 # simulés, joue plusieurs manches complètes et publie mesures + captures d'écran (release « labo »).
-# Se lance automatiquement après une construction réussie, ou à la demande.
+# Se lance à la demande, après une construction.
 name: Banc d'essai
 
 on:
@@ -12,16 +12,12 @@ on:
       players:
         description: "Spectateurs simulés"
         default: "50"
-  workflow_run:
-    workflows: ["Build — tests, APK et banc d'essai"]
-    types: [completed]
 
 permissions:
   contents: write
 
 jobs:
   lab:
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: windows-latest
     timeout-minutes: 40
     steps:

@@ -7,14 +7,14 @@ namespace SpinArena.Tops
 {
     /// <summary>
     /// Génère le modèle 3D d'une toupie à partir de sa définition : pointe, disque de performance, lames d'attaque,
-    /// anneau d'énergie lumineux, couronne et emblème. Les maillages sont partagés entre toupies identiques.
+    /// anneau d'énergie lumineux, couronne (la photo de profil du joueur se pose dessus). Les maillages sont partagés entre toupies identiques.
     /// (Phase 2 : sert de base ; les modèles sculptés FBX pourront remplacer ce générateur toupie par toupie.)
     /// </summary>
     public static class TopVisualFactory
     {
         sealed class TopMeshes
         {
-            public Mesh tip, body, blades, ring, crown, emblem;
+            public Mesh tip, body, blades, ring, crown;
             public Material primary, secondary, glow, tipMat;
         }
 
@@ -33,7 +33,6 @@ namespace SpinArena.Tops
             Add(spin, "Blades", m.blades, m.secondary);
             Add(spin, "Ring", m.ring, m.glow);
             Add(spin, "Crown", m.crown, m.primary);
-            Add(spin, "Emblem", m.emblem, m.glow);
             return spin;
         }
 
@@ -66,7 +65,6 @@ namespace SpinArena.Tops
                 blades = Blades(def.bladeCount, v, rar),
                 ring = Lathe(new[] { V(0.30f, 0.205f), V(0.335f, 0.215f), V(0.335f, 0.235f), V(0.30f, 0.245f) }, 64),
                 crown = Lathe(CrownProfile(v), 40),
-                emblem = Star(6 - (v % 2), 0.09f, 0.045f, 0.36f + (v == 3 ? 0.04f : 0f)),
                 primary = MaterialLibrary.Metal(primary, 0.85f, 0.7f + rar * 0.03f, Color.black),
                 secondary = MaterialLibrary.Metal(secondary, 1f, 0.82f, glow * (0.05f * rar)),
                 glow = MaterialLibrary.Metal(Color.black, 0f, 0.6f, glow * (2.2f + rar * 0.45f)),
@@ -217,27 +215,6 @@ namespace SpinArena.Tops
             float a = 0f;
             for (int i = 0; i < p.Count; i++) { var u = p[i]; var w = p[(i + 1) % p.Count]; a += u.x * w.y - w.x * u.y; }
             return a * 0.5f;
-        }
-
-        /// <summary>Emblème en étoile, légèrement en relief, posé sur la couronne.</summary>
-        static Mesh Star(int points, float rOuter, float rInner, float y)
-        {
-            var poly = new List<Vector2>();
-            for (int i = 0; i < points * 2; i++)
-            {
-                float a = i / (float)(points * 2) * Mathf.PI * 2f;
-                float r = i % 2 == 0 ? rOuter : rInner;
-                poly.Add(new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * r);
-            }
-            var verts = new List<Vector3>();
-            var tris = new List<int>();
-            Extrude(poly, y, y + 0.015f, verts, tris);
-            var m = new Mesh { name = "Emblem" };
-            m.SetVertices(verts);
-            m.SetTriangles(tris, 0);
-            m.RecalculateNormals();
-            m.RecalculateBounds();
-            return m;
         }
     }
 }

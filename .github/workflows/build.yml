@@ -2,7 +2,8 @@
 #  - APK Android (release « apk-derniere », à installer sur le téléphone)
 #  - version Windows pour le banc d'essai automatique (release « labo-pc »)
 #  - pont Termux (release « pont-termux »)
-# Se lance à chaque modification, ou à la demande (onglet Actions → Run workflow).
+# Les tests se lancent à chaque modification. L'APK et la version de test ne sont construits QUE sur demande
+# (onglet Actions → Run workflow) : Seb décide quand générer un nouvel APK.
 name: Build — tests, APK et banc d'essai
 
 on:
@@ -51,6 +52,7 @@ jobs:
 
   build:
     needs: tests
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 120
     strategy:

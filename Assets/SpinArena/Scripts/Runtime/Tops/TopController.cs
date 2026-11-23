@@ -37,8 +37,8 @@ namespace SpinArena.Tops
         Transform _visualRoot, _spin;
         TrailRenderer _trail;
         TextMesh _label;
-        MeshRenderer _avatar;
-        Material _avatarMat;
+        MeshRenderer _photo;          // photo de profil posée sur la toupie (masquée s'il n'y en a pas)
+        Material _photoMat;
         ArenaManager _arena;
         CombatStats _base;
 
@@ -96,7 +96,10 @@ namespace SpinArena.Tops
             Spin = MaxSpin;
             _rb.mass = def.Mass;
             _label.text = displayName.Length > 14 ? displayName.Substring(0, 13) + "…" : displayName;
-            SetAvatar(avatar);
+            SetPhoto(avatar);
+            _size = _sizeVisual = 1f;
+            _heavyUntil = _slowUntil = 0f;
+            ApplySize();
             _atkUntil = _shieldUntil = _turboUntil = _powerUntil = 0f;
             _lastAttacker = null; _lastHitTime = -100f;
             DamageDealt = 0f;
@@ -143,24 +146,48 @@ namespace SpinArena.Tops
             }
             _label.color = Color.white;
 
-            if (_avatar == null)
+            if (_photo == null)
             {
                 var q = GameObject.CreatePrimitive(PrimitiveType.Quad);
-                q.name = "Avatar";
+                q.name = "Photo";
                 Destroy(q.GetComponent<Collider>());
                 q.transform.SetParent(transform, false);
-                q.transform.localScale = Vector3.one * 0.95f;
-                _avatar = q.GetComponent<MeshRenderer>();
-                _avatar.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-                _avatar.receiveShadows = false;
+                _photo = q.GetComponent<MeshRenderer>();
+                _photo.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                _photo.receiveShadows = false;
             }
         }
 
-        public void SetAvatar(Texture tex)
+        /// <summary>Photo de profil TikTok posée sur la toupie ; null = pas de photo (rien n'est affiché).</summary>
+        public void SetPhoto(Texture tex)
         {
-            if (_avatar == null) return;
-            if (_avatarMat == null) { _avatarMat = MaterialLibrary.Transparent(tex, Color.white); _avatar.sharedMaterial = _avatarMat; }
-            else MaterialLibrary.SetTexture(_avatarMat, tex);
+            if (_photo == null) return;
+            _hasPhoto = tex != null;
+            if (!_hasPhoto) return;
+            if (_photoMat == null) { _photoMat = MaterialLibrary.Transparent(tex, Color.white); _photo.sharedMaterial = _photoMat; }
+            else MaterialLibrary.SetTexture(_photoMat, tex);
+        }
+        bool _hasPhoto;
+
+        // ------------------------------------------------------------------ taille (tapotements, cadeaux)
+
+        float _size = 1f, _sizeVisual = 1f, _heavyUntil, _heavyMult = 1f, _slowUntil;
+        public const float MaxSize = 1.8f;
+        public float Size => _size;
+
+        /// <summary>Grossit la toupie pour la manche en cours (plafonné). Plus grosse = plus lourde, plus dure à éjecter.</summary>
+        public void Grow(float amount) { _size = Mathf.Clamp(_size + amount, 1f, MaxSize); }
+
+        public void BuffHeavy(float mult, float seconds) { _heavyMult = Mathf.Clamp(mult, 1f, 2f); _heavyUntil = Time.time + seconds; }
+        public void Slow(float seconds) { _slowUntil = Time.time + seconds; }
+        public bool Slowed => Time.time < _slowUntil;
+
+        void ApplySize()
+        {
+            if (_visualRoot != null) _visualRoot.localScale = Vector3.one * TopScale * _sizeVisual;
+            _col.radius = BodyRadius * _sizeVisual;
+            _col.center = new Vector3(0f, BodyRadius * _sizeVisual, 0f);
+            if (Def != null) _rb.mass = Def.Mass * _sizeVisual * _sizeVisual * (Time.time < _heavyUntil ? _heavyMult : 1f);
         }
 
         // ------------------------------------------------------------------ cycle de vie
@@ -260,6 +287,8 @@ namespace SpinArena.Tops
             _rb.AddForce(dir * impulse * _rb.mass, ForceMode.Impulse);
         }
 
+        public void SpeedBuff(float seconds) { _turboUntil = Mathf.Max(_turboUntil, Time.time + seconds); }
+
         public void Push(Vector3 impulse) { if (State == TopState.Fighting) _rb.AddForce(impulse, ForceMode.Impulse); }
 
         public void SetDecayFactor(float f) => _decayFactor = f;
@@ -358,8 +387,9 @@ namespace SpinArena.Tops
                 Vector3 v = _rb.GetVelocity();
                 Vector3 flat = v.Flat();
                 float max = CombatMath.MaxMoveSpeed(s) * vigor;
+                if (Slowed) max *= 0.3f;
                 if (flat.magnitude < max)
-                    _rb.AddForce(_desired * CombatMath.Acceleration(s) * vigor, ForceMode.Acceleration);
+                    _rb.AddForce(_desired * CombatMath.Acceleration(s) * vigor * (Slowed ? 0.3f : 1f), ForceMode.Acceleration);
                 // Effet gyroscopique : une toupie qui tourne vite « glisse » en orbite plutôt qu'en ligne droite.
                 Vector3 orbit = Vector3.Cross(Vector3.up, flat) * (0.06f * vigor * _orbitSign);
                 _rb.AddForce(orbit, ForceMode.Acceleration);
@@ -371,6 +401,11 @@ namespace SpinArena.Tops
         {
             if (_spin == null) return;
             float dt = Time.deltaTime;
+            if (Mathf.Abs(_sizeVisual - _size) > 0.001f || Time.time < _heavyUntil + 0.1f)
+            {
+                _sizeVisual = Mathf.MoveTowards(_sizeVisual, _size, dt * 0.8f);
+                ApplySize();
+            }
             float frac = State == TopState.Eliminated ? 0f : SpinFraction;
             float rate = State == TopState.Eliminated ? Mathf.Max(0f, 1f - (Time.time - _elimTime) * 1.5f) * 900f : 600f + frac * 2400f;
             _spinAngle += rate * dt * _orbitSign;
@@ -396,7 +431,7 @@ namespace SpinArena.Tops
             {
                 _label.color = frac < 0.25f && State == TopState.Fighting ? new Color(1f, 0.45f, 0.4f) : Color.white;
                 _label.gameObject.SetActive(State != TopState.Eliminated);
-                _avatar.gameObject.SetActive(State != TopState.Eliminated);
+                _photo.gameObject.SetActive(_hasPhoto && State != TopState.Eliminated);
             }
         }
 
@@ -406,9 +441,14 @@ namespace SpinArena.Tops
             if (cam == null || _label == null) return;
             Quaternion face = Quaternion.LookRotation(transform.position - cam.transform.position);
             Vector3 up = cam.transform.up;
-            _avatar.transform.position = transform.position + up * 1.5f + Vector3.up * 0.3f;
-            _avatar.transform.rotation = face;
-            _label.transform.position = transform.position + up * 2.05f + Vector3.up * 0.4f;
+            // Photo posée sur le dessus de la toupie, inclinée vers la caméra pour rester lisible ; elle ne tourne pas.
+            float k = TopScale * _sizeVisual;
+            Vector3 toCam = (cam.transform.position - transform.position).normalized;
+            Vector3 normal = Vector3.Slerp(Vector3.up, toCam, 0.45f);
+            _photo.transform.position = transform.position + Vector3.up * (0.43f * k) + normal * 0.02f;
+            _photo.transform.rotation = Quaternion.LookRotation(-normal, cam.transform.up);
+            _photo.transform.localScale = Vector3.one * (0.62f * k);
+            _label.transform.position = transform.position + up * (1.25f * k) + Vector3.up * 0.4f;
             _label.transform.rotation = face;
         }
 

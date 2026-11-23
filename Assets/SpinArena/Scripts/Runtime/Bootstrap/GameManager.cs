@@ -31,6 +31,7 @@ namespace SpinArena
         public ILiveConnector Live { get; private set; }
         public ChatCommandManager Commands { get; private set; }
         public GiftManager Gifts { get; private set; }
+        public TapManager Taps { get; private set; }
         public float Fps { get; private set; }
 
         const string PrefConnector = "spin.connector";
@@ -77,7 +78,8 @@ namespace SpinArena
             Battle.Init(Arena, Players, Config, Hud);
             Abilities = Child<AbilityManager>("Abilities");
             Abilities.Init(Battle, Config.effects);
-            Commands = new ChatCommandManager(Battle, Abilities, Players, Hud, Config.commands);
+            Commands = new ChatCommandManager(Battle, Players, Config.commands);
+            Taps = new TapManager(Battle, Abilities, Players, Config.effects);
             Gifts = new GiftManager(Config.gifts, Battle, Abilities, Players, Hud);
             Child<AdminPanel>("Admin").Init(this);
 
@@ -103,7 +105,6 @@ namespace SpinArena
             Live.Connect();
             PlayerPrefs.SetString(PrefConnector, kind == "demo" ? "demo" : "bridge");
             PlayerPrefs.Save();
-            Hud.Feed(Live.IsDemo ? "Mode démo activé (spectateurs simulés)" : "Connexion au live TikTok via le pont Termux…", null, new Color(0.7f, 0.85f, 1f));
         }
 
         static double Now => Time.realtimeSinceStartupAsDouble;
@@ -114,11 +115,10 @@ namespace SpinArena
             {
                 case LiveEventType.Chat: Commands.OnChat(e, Now); break;
                 case LiveEventType.Gift: Gifts.OnGift(e, Now); break;
-                case LiveEventType.Like: _likes += Mathf.Max(1, e.likeCount); break;
-                case LiveEventType.Follow: Hud.Feed(e.user.DisplayName + " <color=#80D8FF>s'abonne</color>, merci !", Hud.AvatarOf(e.user.Key)); break;
-                case LiveEventType.Status:
-                    if (e.status == "connected") Hud.Feed("<color=#69F0AE>Live TikTok connecté</color>", null);
-                    else if (e.status == "disconnected") Hud.Feed("<color=#FF8A80>Live TikTok déconnecté, reconnexion…</color>", null);
+                case LiveEventType.Like:
+                    int n = Mathf.Max(1, e.likeCount);
+                    _likes += n;
+                    Taps.OnTaps(e.user, n);
                     break;
             }
         }

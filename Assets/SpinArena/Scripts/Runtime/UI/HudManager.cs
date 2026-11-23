@@ -20,7 +20,7 @@ namespace SpinArena.UI
         public Canvas Canvas { get; private set; }
 
         Text _phase, _timer, _survivors, _status, _hint, _demoTag, _banner, _bannerSub;
-        RectTransform _listRoot, _feedRoot, _joinCard, _winnerCard, _boardCard;
+        RectTransform _listRoot, _joinCard, _winnerCard, _boardCard;
         Text _joinName, _joinTop, _winnerName, _winnerSub, _boardText;
         RawImage _joinAvatar, _winnerAvatar;
         CanvasGroup _bannerGroup, _joinGroup, _winnerGroup, _boardGroup;
@@ -30,10 +30,13 @@ namespace SpinArena.UI
 
         sealed class Row { public RectTransform root; public RawImage avatar; public Text name; public Image bar; public Text level; }
         readonly List<Row> _rows = new List<Row>();
-        sealed class FeedItem { public RectTransform root; public CanvasGroup group; public float born; }
-        readonly List<FeedItem> _feed = new List<FeedItem>();
+        RectTransform _giftCard;
+        CanvasGroup _giftGroup;
+        RawImage _giftIcon;
+        Text _giftName, _giftEffect;
+        float _giftUntil;
+        readonly Queue<(string user, Texture icon, string effect)> _giftQueue = new Queue<(string, Texture, string)>();
         const int Rows = 10;
-        const int FeedMax = 7;
 
         void Awake()
         {
@@ -84,10 +87,14 @@ namespace SpinArena.UI
                 _rows.Add(r);
             }
 
-            // Fil d'événements (droite).
-            var feed = UiFactory.Panel("Feed", root, tr, tr, new Vector2(-16, -16), new Vector2(400, 74 + FeedMax * 74), UiFactory.PanelColor);
-            UiFactory.Label("Header", feed.transform, "ACTION", 28, TextAnchor.MiddleLeft, UiFactory.Accent, tl, tl, new Vector2(20, -10), new Vector2(360, 44));
-            _feedRoot = feed.rectTransform;
+            // Annonces des cadeaux (image + pseudo + action), sous le bandeau du haut.
+            var gp = UiFactory.Panel("GiftPopup", root, top, top, new Vector2(0, -140), new Vector2(620, 110), new Color(0.06f, 0.04f, 0.14f, 0.9f));
+            _giftCard = gp.rectTransform;
+            _giftGroup = gp.gameObject.AddComponent<CanvasGroup>();
+            _giftIcon = UiFactory.Picture("Icon", gp.transform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(10, 0), 96);
+            _giftName = UiFactory.Label("Name", gp.transform, "", 30, TextAnchor.MiddleLeft, Color.white, tl, tl, new Vector2(116, -8), new Vector2(490, 46));
+            _giftEffect = UiFactory.Label("Effect", gp.transform, "", 30, TextAnchor.MiddleLeft, UiFactory.Gold, tl, tl, new Vector2(116, -56), new Vector2(490, 46));
+            _giftGroup.alpha = 0f;
 
             // Bas : invitation + état.
             var hintPanel = UiFactory.Panel("Hint", root, bottom, bottom, new Vector2(0, 16), new Vector2(980, 66), UiFactory.PanelColor);
@@ -148,7 +155,7 @@ namespace SpinArena.UI
                 ? "SURVIVANTS " + alive + "/" + total
                 : "INSCRITS " + total + (queued > 0 ? " (+" + queued + ")" : "");
             _hint.text = phase == RoundPhase.Fighting
-                ? "Aide ta toupie : <color=#FFD54A>!attaque  !bouclier  !turbo  !special</color>"
+                ? "Tape l'écran pour booster et faire grossir ta toupie !"
                 : "Écris <color=#FFD54A>!join</color> dans le chat pour entrer dans l'arène";
         }
 
@@ -186,21 +193,11 @@ namespace SpinArena.UI
         public Texture AvatarOf(string playerId) =>
             _avatarOverride.TryGetValue(playerId, out var t) && t != null ? t : AvatarCache.Instance.Generated(playerId);
 
-        public void Feed(string text, Texture avatar = null, Color? color = null)
+        /// <summary>Annonce d'un cadeau : image, pseudo et action (sans montant).</summary>
+        public void GiftPopup(string user, Texture icon, string effect)
         {
-            var root = UiFactory.Rect("Item", _feedRoot, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(12, -62), new Vector2(376, 70));
-            var group = root.gameObject.AddComponent<CanvasGroup>();
-            float x = 4;
-            if (avatar != null)
-            {
-                var a = UiFactory.Picture("Avatar", root, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(0, 0), 54);
-                a.texture = avatar;
-                x = 62;
-            }
-            UiFactory.Label("Text", root, text, 23, TextAnchor.MiddleLeft, color ?? Color.white, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(x, 0), new Vector2(376 - x, 70));
-            _feed.Insert(0, new FeedItem { root = root, group = group, born = Time.unscaledTime });
-            while (_feed.Count > FeedMax) { Destroy(_feed[_feed.Count - 1].root.gameObject); _feed.RemoveAt(_feed.Count - 1); }
-            for (int i = 0; i < _feed.Count; i++) _feed[i].root.anchoredPosition = new Vector2(12, -62 - i * 74);
+            if (_giftQueue.Count > 8) _giftQueue.Dequeue();
+            _giftQueue.Enqueue((user, icon, effect));
         }
 
         public void Banner(string big, string sub, float seconds, Color? color = null)
@@ -276,11 +273,18 @@ namespace SpinArena.UI
             _winnerGroup.alpha = Mathf.MoveTowards(_winnerGroup.alpha, _winnerVisible ? 1f : 0f, dt * 3f);
             _winnerCard.localScale = Vector3.one * Mathf.Lerp(_winnerCard.localScale.x, _winnerVisible ? 1f : 0.8f, 1f - Mathf.Exp(-dt * 8f));
 
-            for (int i = 0; i < _feed.Count; i++)
+            if (t > _giftUntil && _giftQueue.Count > 0)
             {
-                float age = t - _feed[i].born;
-                _feed[i].group.alpha = age < 0.25f ? age / 0.25f : age > 14f ? Mathf.Max(0.25f, 1f - (age - 14f) / 3f) : 1f;
+                var g = _giftQueue.Dequeue();
+                _giftName.text = g.user;
+                _giftEffect.text = g.effect;
+                _giftIcon.texture = g.icon;
+                _giftIcon.gameObject.SetActive(g.icon != null);
+                _giftUntil = t + (_giftQueue.Count > 2 ? 1.1f : 2.2f);
+                _giftCard.localScale = Vector3.one * 1.25f;
             }
+            _giftGroup.alpha = Mathf.MoveTowards(_giftGroup.alpha, t < _giftUntil ? 1f : 0f, dt * 5f);
+            _giftCard.localScale = Vector3.one * Mathf.Lerp(_giftCard.localScale.x, 1f, 1f - Mathf.Exp(-dt * 10f));
         }
     }
 }

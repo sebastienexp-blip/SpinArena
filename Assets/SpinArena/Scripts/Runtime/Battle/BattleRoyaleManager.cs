@@ -42,7 +42,6 @@ namespace SpinArena.Battle
             Round = new BattleRound(cfg.round);
             Round.PhaseChanged += OnPhase;
             Round.ParticipantJoined += OnJoined;
-            Round.QueuedForNextRound += id => { var p = _players.Registry.Get(id); if (p != null) _hud.Feed(p.DisplayName + " jouera la prochaine manche", _hud.AvatarOf(id), new Color(0.75f, 0.85f, 1f)); };
             Round.ParticipantEliminated += OnEliminated;
             Round.WinnerDecided += OnWinner;
             Round.SuddenDeathStarted += () => { _hud.Banner("MORT SUBITE", "Les toupies s'épuisent 4× plus vite !", 3f, new Color(1f, 0.35f, 0.3f)); CameraDirector.Instance.Shake(0.3f); };
@@ -66,11 +65,11 @@ namespace SpinArena.Battle
             var def = _players.Catalog.Get(p?.selectedTopId) ?? _players.Catalog.StarterFor(part.playerId);
             var top = _pool.Count > 0 ? _pool.Pop() : CreateTop();
             Texture avatar = _hud.AvatarOf(part.playerId);
-            top.Setup(_arena, part.playerId, p?.DisplayName ?? part.playerId, def, p?.level ?? 1, avatar);
+            top.Setup(_arena, part.playerId, p?.DisplayName ?? part.playerId, def, p?.level ?? 1, null);
             if (p != null && !string.IsNullOrEmpty(p.avatarUrl))
             {
-                var tex = AvatarCache.Instance.Get(p.id, p.avatarUrl, photo => { _hud.SetAvatar(part.playerId, photo); if (_tops.TryGetValue(part.playerId, out var tc)) tc.SetAvatar(photo); });
-                if (tex != null && tex != AvatarCache.Instance.Generated(p.id)) { _hud.SetAvatar(p.id, tex); top.SetAvatar(tex); avatar = tex; }
+                var tex = AvatarCache.Instance.Get(p.id, p.avatarUrl, photo => { _hud.SetAvatar(part.playerId, photo); if (_tops.TryGetValue(part.playerId, out var tc)) tc.SetPhoto(photo); });
+                if (tex != null && tex != AvatarCache.Instance.Generated(p.id)) { _hud.SetAvatar(p.id, tex); top.SetPhoto(tex); avatar = tex; }
             }
             _tops[part.playerId] = top;
             RebuildActive();
@@ -218,10 +217,6 @@ namespace SpinArena.Battle
             top.Eliminate(ringOut);
             VfxManager.Instance.Explosion(top.transform.position + Vector3.up * 0.3f, top.Glow, ringOut ? 0.7f : 1f);
             CameraDirector.Instance.Shake(0.12f);
-            string by = !string.IsNullOrEmpty(part.eliminatedBy) && _tops.TryGetValue(part.eliminatedBy, out var k) ? k.DisplayName : null;
-            string how = ringOut ? "éjecté" : "à court d'énergie";
-            string text = by != null ? top.DisplayName + " <color=#FF8A80>" + how + "</color> par " + by : top.DisplayName + " <color=#FF8A80>" + how + "</color>";
-            _hud.Feed(text + "  <color=#9FB3C8>#" + part.placement + "</color>", _hud.AvatarOf(part.playerId));
         }
 
         void OnWinner(string winnerId)
@@ -237,12 +232,8 @@ namespace SpinArena.Battle
                       + (res.outcome.levelsGained > 0 ? "\n<color=#FFD54A>Niveau " + res.outcome.newLevel + " !</color>" : "")
                     : "";
                 _hud.ShowWinner(w.DisplayName, _hud.AvatarOf(winnerId), w.Def.name + " · " + details);
-                _hud.Feed("<color=#FFD54A>VICTOIRE</color> de " + w.DisplayName + " !", _hud.AvatarOf(winnerId));
             }
             else _hud.Banner("ÉGALITÉ", "Aucun survivant !", 3f);
-            foreach (var r in results)
-                if (r.outcome.levelsGained > 0 && r.player.id != winnerId)
-                    _hud.Feed(r.player.DisplayName + " passe <color=#FFD54A>niveau " + r.outcome.newLevel + "</color>", _hud.AvatarOf(r.player.id));
         }
 
         public TopController TopOf(string playerId) => playerId != null && _tops.TryGetValue(playerId, out var t) ? t : null;

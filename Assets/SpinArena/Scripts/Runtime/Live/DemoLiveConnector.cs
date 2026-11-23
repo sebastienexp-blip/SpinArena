@@ -20,6 +20,11 @@ namespace SpinArena.Live
         };
         static readonly string[] Suffixes = { "_spin", "77", "_pro", "TV", "_fr", "x", "_off", "59", "_games", "13" };
 
+        static readonly (string name, int value)[] Small = { ("Rose", 1), ("TikTok", 1), ("Weights", 1), ("Ice Cream Cone", 1), ("GG", 1), ("Mini Speaker", 1), ("Football", 1), ("Heart Me", 1) };
+        static readonly (string name, int value)[] Medium = { ("Finger Heart", 5), ("Panda", 5), ("Mic", 5), ("Hand Wave", 9), ("Perfume", 20), ("Doughnut", 30), ("Cap", 99) };
+        static readonly (string name, int value)[] Big = { ("Hand Hearts", 100), ("Sunglasses", 199), ("TikTok Crown", 299), ("Money Gun", 500) };
+        static readonly (string name, int value)[] Huge = { ("Galaxy", 1000), ("Sunset Speedway", 10000) };
+
         readonly int _count;
         readonly Func<RoundPhase> _phase;
         readonly Random _rng = new Random(1234);
@@ -66,26 +71,23 @@ namespace SpinArena.Live
                 if (phase == RoundPhase.Lobby || phase == RoundPhase.Countdown) Chat(u, "!join", now);
                 else if (phase == RoundPhase.Fighting)
                 {
-                    int r = _rng.Next(100);
-                    string cmd = r < 35 ? "!attaque" : r < 55 ? "!bouclier" : r < 75 ? "!turbo" : r < 85 ? "!special" : r < 92 ? "!join" : r < 96 ? "!stats" : "!toupie";
-                    Chat(u, cmd, now);
+                    if (_rng.Next(5) == 0) Chat(u, "!join", now);
+                    // Tapotements simulés.
+                    _pending.Enqueue(new LiveEvent { type = LiveEventType.Like, user = Pick(), likeCount = 5 + _rng.Next(11), receivedAt = now });
                 }
-                else if (_rng.Next(4) == 0) Chat(u, _rng.Next(2) == 0 ? "!top" : "!profil", now);
                 _nextChat = now + (phase == RoundPhase.Lobby ? 0.25 : 0.6) + _rng.NextDouble() * 0.8;
             }
             if (now >= _nextGift && phase == RoundPhase.Fighting)
             {
                 var u = Pick();
                 int r = _rng.Next(100);
-                string gift; int diamonds; bool streak = true; int repeat = 1 + _rng.Next(5);
-                if (r < 70) { gift = "Rose"; diamonds = 1; }
-                else if (r < 90) { gift = "Donut"; diamonds = 30; }
-                else if (r < 98) { gift = "Couronne"; diamonds = 199; streak = false; repeat = 1; }
-                else { gift = "Lion"; diamonds = 29999; streak = false; repeat = 1; }
+                var g = r < 75 ? Small[_rng.Next(Small.Length)] : r < 93 ? Medium[_rng.Next(Medium.Length)] : r < 99 ? Big[_rng.Next(Big.Length)] : Huge[_rng.Next(Huge.Length)];
+                string gift = g.name; int diamonds = g.value;
+                bool streak = diamonds < 100; int repeat = streak ? 1 + _rng.Next(4) : 1;
                 string id = "demo_gift" + (++_msg);
                 for (int i = 1; i <= repeat; i++)
                     _pending.Enqueue(new LiveEvent { type = LiveEventType.Gift, msgId = id, user = u, giftId = gift, giftName = gift, diamondCount = diamonds, repeatCount = i, repeatEnd = i == repeat, streakable = streak, receivedAt = now });
-                _nextGift = now + 3 + _rng.NextDouble() * 6;
+                _nextGift = now + 1.5 + _rng.NextDouble() * 3;
             }
             while (_pending.Count > 0) EventReceived?.Invoke(_pending.Dequeue());
         }

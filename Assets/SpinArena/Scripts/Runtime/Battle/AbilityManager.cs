@@ -112,6 +112,163 @@ namespace SpinArena.Battle
                       .OrderBy(o => (o.transform.position - p).sqrMagnitude).Take(count);
         }
 
+        // ------------------------------------------------------------------ effets des cadeaux (toupie du donateur)
+
+        public void SpeedBoost(TopController t, float seconds) { if (Ok(t)) t.SpeedBuff(seconds); }
+
+        public bool Heal(TopController t, float fraction)
+        {
+            if (!Ok(t)) return false;
+            t.AddSpin(t.MaxSpin * Mathf.Min(fraction, 0.3f));
+            Vfx.Sparkle(t.transform.position, new Color(0.5f, 1f, 0.6f));
+            return true;
+        }
+
+        public bool Heavy(TopController t, float seconds)
+        {
+            if (!Ok(t)) return false;
+            t.BuffHeavy(1.6f, seconds);
+            Vfx.Shockwave(t.transform.position, new Color(0.8f, 0.8f, 0.85f));
+            return true;
+        }
+
+        public bool GrowTop(TopController t, float amount)
+        {
+            if (t == null || !t.Alive) return false;
+            t.Grow(amount);
+            Vfx.JoinBeam(t.transform.position, t.Glow);
+            return true;
+        }
+
+        /// <summary>Gèle l'adversaire le plus proche (ralenti, plus de déplacement).</summary>
+        public bool FreezeNearest(TopController t, float seconds)
+        {
+            if (!Ok(t)) return false;
+            var o = Nearest(t, 1, 14f).FirstOrDefault();
+            if (o == null) return false;
+            o.Body.SetVelocity(Vector3.zero);
+            o.Slow(seconds);
+            Vfx.Shockwave(o.transform.position, new Color(0.6f, 0.9f, 1f));
+            return true;
+        }
+
+        /// <summary>Tir : l'adversaire le plus proche est projeté loin de la toupie.</summary>
+        public bool Kick(TopController t, float power)
+        {
+            if (!Ok(t)) return false;
+            var o = Nearest(t, 1, 10f).FirstOrDefault();
+            if (o == null) return false;
+            Vector3 d = (o.transform.position - t.transform.position).Flat().normalized;
+            o.Push((d + Vector3.up * 0.2f) * 7f * power * o.Body.mass);
+            o.TakeDamage(o.MaxSpin * 0.03f * power, t.PlayerId);
+            Vfx.Impact(o.transform.position + Vector3.up * 0.4f, t.Glow, Color.white, 90f);
+            return true;
+        }
+
+        /// <summary>Onde de choc autour de la toupie (rayon et force réglables).</summary>
+        public bool Wave(TopController t, float radiusMult, float damageMult, float impulse)
+        {
+            if (!Ok(t)) return false;
+            Shockwave(t, _fx.shockwaveRadius * radiusMult, _fx.shockwaveDamage * damageMult, impulse);
+            return true;
+        }
+
+        public bool Regen(TopController t, float total, float seconds)
+        {
+            if (!Ok(t)) return false;
+            StartCoroutine(RegenRoutine(t, Mathf.Min(total, 0.3f), seconds));
+            return true;
+        }
+
+        IEnumerator RegenRoutine(TopController t, float total, float seconds)
+        {
+            int ticks = Mathf.Max(1, Mathf.RoundToInt(seconds * 2f));
+            for (int i = 0; i < ticks && Ok(t); i++)
+            {
+                t.AddSpin(t.MaxSpin * total / ticks);
+                Vfx.Sparkle(t.transform.position, new Color(1f, 0.6f, 0.85f));
+                yield return new WaitForSeconds(0.5f);
+            }
+        }
+
+        /// <summary>Rafale : trois élans successifs vers les adversaires, dégâts renforcés.</summary>
+        public bool Rafale(TopController t)
+        {
+            if (!Ok(t)) return false;
+            t.BuffAttack(1.3f, 4f);
+            StartCoroutine(RafaleRoutine(t));
+            return true;
+        }
+
+        IEnumerator RafaleRoutine(TopController t)
+        {
+            for (int i = 0; i < 3 && Ok(t); i++)
+            {
+                t.Turbo(_fx.turboImpulse, 1.2f);
+                Vfx.Sparkle(t.transform.position, t.Glow);
+                yield return new WaitForSeconds(0.45f);
+            }
+        }
+
+        /// <summary>Couronne : la toupie devient royale (plus grosse, surpuissante, protégée).</summary>
+        public bool Royal(TopController t)
+        {
+            if (!Ok(t)) return false;
+            t.Grow(0.3f);
+            t.BuffPower(1.3f, 10f);
+            t.BuffShield(0.35f, 10f);
+            Vfx.JoinBeam(t.transform.position, new Color(1f, 0.85f, 0.3f));
+            Vfx.Confetti(t.transform.position);
+            return true;
+        }
+
+        /// <summary>Rafale de projectiles sur les adversaires les plus proches.</summary>
+        public bool Barrage(TopController t, int shots)
+        {
+            if (!Ok(t)) return false;
+            var targets = Nearest(t, shots, 16f).ToList();
+            if (targets.Count == 0) return false;
+            foreach (var o in targets)
+            {
+                var victim = o;
+                Vfx.SpawnMeteor(o.transform.position + Vector3.up * 0.2f, m =>
+                {
+                    Vfx.Explosion(m.transform.position, t.Glow, 0.6f);
+                    if (victim.State == TopState.Fighting)
+                    {
+                        victim.TakeDamage(victim.MaxSpin * 0.07f, t.PlayerId);
+                        victim.Push(((victim.transform.position - t.transform.position).Flat().normalized + Vector3.up * 0.2f) * 5f * victim.Body.mass);
+                    }
+                });
+            }
+            return true;
+        }
+
+        /// <summary>Tornade : événement d'arène, toutes les toupies sont emportées et perdent de l'énergie (personne n'est épargné).</summary>
+        public void Tornado()
+        {
+            StartCoroutine(TornadoRoutine());
+            MeteorStorm(2);
+        }
+
+        IEnumerator TornadoRoutine()
+        {
+            float end = Time.time + 6f;
+            CameraDirector.Instance.Shake(0.4f);
+            while (Time.time < end)
+            {
+                foreach (var o in _br.Fighting().ToList())
+                {
+                    Vector3 p = o.transform.position.Flat();
+                    Vector3 swirl = Vector3.Cross(Vector3.up, p.normalized) * 14f - p.normalized * 3f;
+                    o.Body.AddForce(swirl, ForceMode.Acceleration);
+                    o.TakeDamage(o.MaxSpin * 0.012f, null);
+                }
+                Vfx.Shockwave(Vector3.zero, new Color(1f, 0.5f, 0.8f));
+                yield return new WaitForSeconds(0.5f);
+            }
+        }
+
         // ------------------------------------------------------------------ effets des cadeaux
 
         /// <summary>Bonus collectif : toutes les toupies regagnent un peu d'énergie (aucune n'est favorisée).</summary>
