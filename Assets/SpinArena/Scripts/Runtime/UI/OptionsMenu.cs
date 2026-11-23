@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using SpinArena.Core.Battle;
+using SpinArena.Core.Live;
 using SpinArena.Live;
 using SpinArena.UI;
 using UnityEngine;
@@ -225,17 +226,17 @@ namespace SpinArena
             foreach (var rule in g.rules.Where(x => !string.IsNullOrEmpty(x.giftName)))
             {
                 var rr = rule;
-                Choice(rr.giftName, GiftManager.EffectNames,
-                    () => Math.Max(0, Array.IndexOf(GiftManager.EffectIds, rr.effect)),
-                    i => rr.effect = GiftManager.EffectIds[i], GiftIcons.Get(rr.giftName));
+                Choice(rr.giftName, GiftEffects.EffectNames,
+                    () => Math.Max(0, Array.IndexOf(GiftEffects.EffectIds, rr.effect)),
+                    i => rr.effect = GiftEffects.EffectIds[i], GiftIcons.Get(rr.giftName));
             }
             Header("Cadeaux inconnus (selon leur valeur)");
             foreach (var rule in g.rules.Where(x => string.IsNullOrEmpty(x.giftName)).OrderByDescending(x => x.minDiamonds))
             {
                 var rr = rule;
-                Choice("À partir de " + rr.minDiamonds + " pièce(s)", GiftManager.EffectNames,
-                    () => Math.Max(0, Array.IndexOf(GiftManager.EffectIds, rr.effect)),
-                    i => rr.effect = GiftManager.EffectIds[i]);
+                Choice("À partir de " + rr.minDiamonds + " pièce(s)", GiftEffects.EffectNames,
+                    () => Math.Max(0, Array.IndexOf(GiftEffects.EffectIds, rr.effect)),
+                    i => rr.effect = GiftEffects.EffectIds[i]);
             }
         }
 
@@ -244,6 +245,8 @@ namespace SpinArena
             var d = C.display;
             Header("À l'écran");
             Toggle("Pseudos au-dessus des toupies", () => d.showNames, v => d.showNames = v);
+            Stepper("Taille des pseudos", () => d.nameSize, v => d.nameSize = v, 0.6f, 1.6f, 0.1f, Pct);
+            Toggle("Liste des cadeaux et interactions (droite)", () => d.showGiftLegend, v => d.showGiftLegend = v);
             Toggle("Photos de profil sur les toupies", () => d.showPhotos, v => d.showPhotos = v);
             Toggle("Liste des joueurs (gauche)", () => d.showPlayerList, v => d.showPlayerList = v);
             Toggle("Annonces des cadeaux", () => d.showGiftPopups, v => d.showGiftPopups = v);
@@ -326,6 +329,7 @@ namespace SpinArena
         {
             C.SaveOverride();
             _gm.ApplyDisplay();
+            _gm.Hud.RefreshLegend();
         }
 
         RectTransform Row(float height = 84)

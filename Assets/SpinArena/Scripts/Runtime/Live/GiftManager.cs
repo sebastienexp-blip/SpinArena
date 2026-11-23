@@ -52,18 +52,6 @@ namespace SpinArena.Live
             }
         }
 
-        /// <summary>Actions possibles (identifiant, nom affiché dans les options).</summary>
-        public static readonly string[] EffectIds =
-        {
-            "heal_small", "heal", "super_heal", "regen", "turbo", "rafale", "heavy", "shield", "grow", "royal",
-            "freeze", "kick", "sound_wave", "shockwave", "blast", "power_up", "special_attack", "barrage", "wheel", "meteor_storm", "tornado"
-        };
-        public static readonly string[] EffectNames =
-        {
-            "Énergie +", "Soin", "Super soin + bouclier", "Régénération", "Turbo", "Rafale", "Toupie blindée", "Bouclier", "Grossit", "Toupie royale",
-            "Gèle un adversaire", "Tir puissant", "Onde sonore", "Onde de choc", "Souffle géant", "Surpuissance", "Capacité spéciale", "Tir de barrage", "Roue au hasard", "Pluie de météores", "Tornade"
-        };
-
         static readonly string[] WheelEffects = { "heal", "turbo", "shield", "grow", "kick", "freeze", "shockwave", "heavy" };
 
         void Execute(GiftActivation a, string effect)
@@ -80,7 +68,7 @@ namespace SpinArena.Live
                 label = "énergie pour toutes les toupies";
             }
             Audio.AudioManager.Play("gift", 0.8f, 0.15f);
-            _hud.GiftPopup(a.userName, GiftIcons.Get(a.giftName), (n > 1 ? "×" + n + "  " : "") + label);
+            _hud.GiftPopup(a.userName, GiftIcons.Get(a.ruleName ?? a.giftName) ?? GiftIcons.Get(a.giftName), (n > 1 ? "×" + n + "  " : "") + label);
         }
 
         /// <summary>Lance l'action ; renvoie le texte affiché, ou null si elle n'a pas pu s'appliquer.</summary>
@@ -134,7 +122,8 @@ namespace SpinArena.Live
         static readonly Dictionary<string, string> Urls = new Dictionary<string, string>();
         static readonly HashSet<string> Loading = new HashSet<string>();
 
-        static string Slug(string name) => (name ?? "").Trim().ToLowerInvariant().Replace(' ', '_');
+        /// <summary>Nom du fichier image : « Finger Heart » → finger_heart (Resources/Gifts/finger_heart.png).</summary>
+        public static string Slug(string name) => (name ?? "").Trim().ToLowerInvariant().Replace(' ', '_');
 
         public static void Remember(string name, string url)
         {

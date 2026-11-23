@@ -82,6 +82,8 @@ namespace SpinArena
         public bool showPhotos = true;
         public bool showPlayerList = true;
         public bool showGiftPopups = true;
+        public bool showGiftLegend = true;   // liste des cadeaux et de leurs actions (droite)
+        public float nameSize = 1f;          // taille des pseudos (0.6 .. 1.6)
         public bool showJoinCards = true;
         public bool showHint = true;
         public bool showStatus = true;

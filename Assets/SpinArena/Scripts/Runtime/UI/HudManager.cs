@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using SpinArena.Core.Battle;
+using SpinArena.Core.Live;
 using SpinArena.Core.Players;
 using SpinArena.Core.Tops;
 using SpinArena.Tops;
@@ -31,6 +32,9 @@ namespace SpinArena.UI
         sealed class Row { public RectTransform root; public RawImage avatar; public Text name; public Image bar; public Text level; }
         readonly List<Row> _rows = new List<Row>();
         Image _hintPanel;
+        RectTransform _tagsRoot, _legendRoot;
+        sealed class Tag { public RectTransform root; public Image bg; public Text text; public string name; }
+        readonly List<Tag> _tags = new List<Tag>();
         RectTransform _giftCard;
         CanvasGroup _giftGroup;
         RawImage _giftIcon;
@@ -65,6 +69,14 @@ namespace SpinArena.UI
         void Build(Transform root)
         {
             Vector2 top = new Vector2(0.5f, 1f), tl = new Vector2(0f, 1f), tr = new Vector2(1f, 1f), bottom = new Vector2(0.5f, 0f), center = new Vector2(0.5f, 0.5f);
+
+            // Pseudos des toupies (sous tous les panneaux).
+            _tagsRoot = UiFactory.Rect("NameTags", root, Vector2.zero, Vector2.one, center, Vector2.zero, Vector2.zero);
+
+            // Légende des cadeaux (droite).
+            var legend = UiFactory.Panel("GiftLegend", root, tr, tr, new Vector2(-14, -14), new Vector2(440, 1000), UiFactory.PanelColor);
+            _legendRoot = legend.rectTransform;
+            RefreshLegend();
 
             // Bandeau du haut.
             var bar = UiFactory.Panel("TopBar", root, top, top, new Vector2(0, -14), new Vector2(760, 112), UiFactory.PanelColor);
@@ -101,7 +113,7 @@ namespace SpinArena.UI
             var hintPanel = _hintPanel = UiFactory.Panel("Hint", root, bottom, bottom, new Vector2(0, 16), new Vector2(980, 66), UiFactory.PanelColor);
             _hint = UiFactory.Label("HintText", hintPanel.transform, "Écris <color=#FFD54A>!join</color> dans le chat pour entrer dans l'arène", 32, TextAnchor.MiddleCenter, Color.white, center, center, Vector2.zero, new Vector2(960, 60));
             _status = UiFactory.Label("Status", root, "", 18, TextAnchor.LowerLeft, new Color(1f, 1f, 1f, 0.6f), new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(18, 10), new Vector2(560, 60));
-            _demoTag = UiFactory.Label("Demo", root, "MODE DÉMO", 30, TextAnchor.LowerRight, new Color(1f, 0.35f, 0.3f), new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-20, 14), new Vector2(300, 44));
+            _demoTag = UiFactory.Label("Demo", root, "MODE DÉMO", 30, TextAnchor.LowerLeft, new Color(1f, 0.35f, 0.3f), new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(18, 64), new Vector2(300, 44));
             _demoTag.gameObject.SetActive(false);
 
             // Annonce centrale.
@@ -194,6 +206,93 @@ namespace SpinArena.UI
         public Texture AvatarOf(string playerId) =>
             _avatarOverride.TryGetValue(playerId, out var t) && t != null ? t : AvatarCache.Instance.Generated(playerId);
 
+        /// <summary>
+        /// Légende à droite : chaque cadeau configuré avec son image, son nom et son action, plus les tapotements.
+        /// Reconstruite à partir des règles actuelles (elle suit les changements faits dans les options).
+        /// </summary>
+        public void RefreshLegend()
+        {
+            if (_legendRoot == null) return;
+            for (int i = _legendRoot.childCount - 1; i >= 0; i--) Destroy(_legendRoot.GetChild(i).gameObject);
+            var cfg = GameConfig.Current;
+            Vector2 tl = new Vector2(0f, 1f);
+            UiFactory.Label("Title", _legendRoot, "INTERACTIONS", 28, TextAnchor.MiddleLeft, UiFactory.Accent, tl, tl, new Vector2(18, -8), new Vector2(400, 44));
+            var rows = new List<(Texture icon, string name, string action)>();
+            rows.Add((null, "Tapotements", "+" + (cfg.effects.tapGrowth * 100f).ToString("0.#") + " % taille, vitesse"));
+            var seen = new HashSet<string>();
+            foreach (var r in cfg.gifts.rules)
+            {
+                if (string.IsNullOrEmpty(r.giftName)) continue;
+                var icon = Live.GiftIcons.Get(r.giftName);
+                if (icon == null || !seen.Add(Live.GiftIcons.Slug(r.giftName == "Donut" ? "Doughnut" : r.giftName))) continue; // un seul « Doughnut »
+                rows.Add((icon, r.giftName, GiftEffects.NameOf(r.effect)));
+            }
+            float rowH = Mathf.Min(42f, 930f / Mathf.Max(1, rows.Count));
+            for (int i = 0; i < rows.Count; i++)
+            {
+                float y = -56 - i * rowH;
+                var (icon, name, action) = rows[i];
+                if (icon != null)
+                {
+                    var pic = UiFactory.Picture("Icon", _legendRoot, tl, new Vector2(0f, 0.5f), new Vector2(12, y - rowH * 0.5f), rowH - 4);
+                    pic.texture = icon;
+                }
+                else
+                {
+                    var dot = UiFactory.Label("Tap", _legendRoot, "x15", 18, TextAnchor.MiddleCenter, new Color(1f, 0.6f, 0.75f), tl, new Vector2(0f, 0.5f), new Vector2(10, y - rowH * 0.5f), new Vector2(rowH, rowH));
+                }
+                UiFactory.Label("Name", _legendRoot, name, 20, TextAnchor.MiddleLeft, Color.white, tl, new Vector2(0f, 0.5f), new Vector2(60, y - rowH * 0.5f), new Vector2(160, rowH));
+                UiFactory.Label("Action", _legendRoot, action, 20, TextAnchor.MiddleRight, UiFactory.Gold, tl, new Vector2(0f, 0.5f), new Vector2(218, y - rowH * 0.5f), new Vector2(208, rowH));
+            }
+        }
+
+        /// <summary>Pseudos au-dessus des toupies, en texte d'interface net avec contour et fond sombre.</summary>
+        void LateUpdate()
+        {
+            var gm = GameManager.Instance;
+            var cam = Camera.main;
+            var disp = GameConfig.Current.display;
+            int used = 0;
+            if (gm != null && cam != null && disp.showNames && gm.Battle != null)
+            {
+                var canvasRt = (RectTransform)Canvas.transform;
+                float scale = Mathf.Clamp(disp.nameSize, 0.5f, 2f);
+                foreach (var top in gm.Battle.Tops.Values)
+                {
+                    if (!top.Alive || !top.gameObject.activeInHierarchy) continue;
+                    Vector3 sp = cam.WorldToScreenPoint(top.NameAnchor);
+                    if (sp.z <= 0f) continue;
+                    if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRt, sp, null, out var local)) continue;
+                    if (used >= _tags.Count) _tags.Add(NewTag());
+                    var tag = _tags[used++];
+                    if (!tag.root.gameObject.activeSelf) tag.root.gameObject.SetActive(true);
+                    string n = top.ShortName;
+                    if (tag.name != n)
+                    {
+                        tag.name = n;
+                        tag.text.text = n;
+                    }
+                    float w = tag.text.preferredWidth + 22f;
+                    tag.root.sizeDelta = new Vector2(w, 40f);
+                    tag.root.localScale = Vector3.one * scale;
+                    tag.root.anchoredPosition = local;
+                    bool low = top.SpinFraction < 0.25f;
+                    tag.text.color = low ? new Color(1f, 0.55f, 0.5f) : Color.white;
+                    tag.bg.color = new Color(top.Glow.r * 0.25f, top.Glow.g * 0.25f, top.Glow.b * 0.3f, 0.78f);
+                }
+            }
+            for (int i = used; i < _tags.Count; i++) if (_tags[i].root.gameObject.activeSelf) _tags[i].root.gameObject.SetActive(false);
+        }
+
+        Tag NewTag()
+        {
+            var bg = UiFactory.Panel("Tag", _tagsRoot, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0f), Vector2.zero, new Vector2(120, 40), new Color(0f, 0f, 0f, 0.7f));
+            var t = UiFactory.Label("Text", bg.transform, "", 27, TextAnchor.MiddleCenter, Color.white, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(400, 40));
+            t.fontStyle = FontStyle.Bold;
+            t.horizontalOverflow = HorizontalWrapMode.Overflow;
+            return new Tag { root = bg.rectTransform, bg = bg, text = t };
+        }
+
         /// <summary>Annonce d'un cadeau : image, pseudo et action (sans montant).</summary>
         public void GiftPopup(string user, Texture icon, string effect)
         {
@@ -249,6 +348,7 @@ namespace SpinArena.UI
             float t = Time.unscaledTime, dt = Time.unscaledDeltaTime;
             var disp = GameConfig.Current.display;
             _listRoot.gameObject.SetActive(disp.showPlayerList);
+            _legendRoot.gameObject.SetActive(disp.showGiftLegend);
             _hintPanel.gameObject.SetActive(disp.showHint);
             _status.gameObject.SetActive(disp.showStatus);
             _banner.transform.parent.gameObject.SetActive(disp.showBanners);

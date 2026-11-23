@@ -8,6 +8,10 @@ name: Build — tests, APK et banc d'essai
 
 on:
   workflow_dispatch:
+    inputs:
+      platforms:
+        description: "Plateformes : android,windows (APK + banc d'essai) ou windows (banc d'essai seul, sans APK)"
+        default: "android,windows"
   push:
     branches: [main]
     paths:
@@ -29,7 +33,23 @@ jobs:
   tests:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
     steps:
+      - name: Plateformes à construire
+        id: matrix
+        env:
+          WANTED: ${{ github.event.inputs.platforms || 'android,windows' }}
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json, os
+          wanted = [w.strip() for w in os.environ["WANTED"].split(",")]
+          all_ = [
+            {"name": "android", "target": "Android", "method": "SpinArena.EditorTools.Builder.BuildAndroid", "artifact": "build/Android/SpinArena.apk"},
+            {"name": "windows", "target": "StandaloneWindows64", "method": "SpinArena.EditorTools.Builder.BuildWindows", "artifact": "build/Windows"},
+          ]
+          print("matrix=" + json.dumps({"include": [m for m in all_ if m["name"] in wanted]}))
+          PY
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
@@ -57,16 +77,7 @@ jobs:
     timeout-minutes: 120
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - name: android
-            target: Android
-            method: SpinArena.EditorTools.Builder.BuildAndroid
-            artifact: build/Android/SpinArena.apk
-          - name: windows
-            target: StandaloneWindows64
-            method: SpinArena.EditorTools.Builder.BuildWindows
-            artifact: build/Windows
+      matrix: ${{ fromJson(needs.tests.outputs.matrix) }}
     steps:
       - name: Libérer de l'espace disque
         uses: jlumbroso/free-disk-space@v1.3.1

@@ -43,6 +43,7 @@ static class Program
         Test("cadeaux-règles", GiftRules);
         Test("joueurs", Players);
         Test("progression", Progression);
+        Test("cadeaux-images-actions", GiftWiring);
 
         Console.WriteLine($"Tests du noyau : {_pass} réussis, {_fail} échoués");
         foreach (var f in Failures) Console.WriteLine("  ÉCHEC : " + f);
@@ -272,6 +273,54 @@ static class Program
         Check(b.id == "sans_id", "clé de secours = @pseudo");
         p.wins = 3; b.wins = 1;
         Check(reg.Leaderboard(10)[0].id == "42" && reg.RankOf("sans_id") == 2, "classement");
+    }
+
+    /// <summary>
+    /// Vérifie que chaque cadeau configuré a la bonne image, une action qui existe et qui est programmée dans le jeu,
+    /// et que le fichier de configuration et les valeurs par défaut du code disent la même chose.
+    /// </summary>
+    static void GiftWiring()
+    {
+        string root = FindRoot();
+        var json = System.Text.Json.JsonDocument.Parse(System.IO.File.ReadAllText(System.IO.Path.Combine(root, "Assets/SpinArena/Resources/Config/game_config.json")));
+        var rules = json.RootElement.GetProperty("gifts").GetProperty("rules").EnumerateArray().ToList();
+        var defaults = GiftSettings.CreateDefault().rules;
+        Check(rules.Count == defaults.Count, $"config et code : même nombre de règles ({rules.Count}/{defaults.Count})");
+        string runSource = System.IO.File.ReadAllText(System.IO.Path.Combine(root, "Assets/SpinArena/Scripts/Runtime/Live/GiftManager.cs"));
+        string giftDir = System.IO.Path.Combine(root, "Assets/SpinArena/Resources/Gifts");
+        var usedImages = new HashSet<string>();
+        for (int i = 0; i < rules.Count; i++)
+        {
+            string name = rules[i].GetProperty("giftName").GetString();
+            string effect = rules[i].GetProperty("effect").GetString();
+            int tier = rules[i].GetProperty("tier").GetInt32();
+            var d = defaults[Math.Min(i, defaults.Count - 1)];
+            Check(d.giftName == (string.IsNullOrEmpty(name) ? null : name) || (string.IsNullOrEmpty(d.giftName) && string.IsNullOrEmpty(name)), $"règle {i} : même cadeau ({name} / {d.giftName})");
+            Check(d.effect == effect && (int)d.tier == tier, $"{name} : même action et niveau dans la config et le code");
+            Check(GiftEffects.IsKnown(effect), $"{name} : action « {effect} » connue");
+            Check(runSource.Contains("case \"" + effect + "\":"), $"action « {effect} » programmée dans GiftManager");
+            if (string.IsNullOrEmpty(name)) continue;
+            string slug = name.Trim().ToLowerInvariant().Replace(' ', '_');
+            if (slug == "donut") slug = "doughnut";
+            usedImages.Add(slug);
+            Check(System.IO.File.Exists(System.IO.Path.Combine(giftDir, slug + ".png")), $"{name} : image {slug}.png présente");
+            // Chaîne complète : un événement « cadeau » avec ce nom donne bien cette action et retrouve la bonne image.
+            var g = new GiftProcessor(GiftSettings.CreateDefault());
+            g.Receive(new LiveEvent { type = LiveEventType.Gift, msgId = "w" + i, user = new LiveUser { userId = "u" }, giftName = name.ToUpperInvariant(), diamondCount = 1, repeatCount = 1, repeatEnd = true }, 0);
+            var a = g.Dequeue(0).FirstOrDefault();
+            Check(a != null && a.effect == effect && a.ruleName == name, $"{name} : événement → action {effect} (trouvé {a?.effect}, image de {a?.ruleName})");
+        }
+        foreach (var f in System.IO.Directory.GetFiles(giftDir, "*.png"))
+            Check(usedImages.Contains(System.IO.Path.GetFileNameWithoutExtension(f)), "image sans cadeau : " + System.IO.Path.GetFileName(f));
+        Check(GiftProcessor.NormalizeName("Finger-Heart ") == GiftProcessor.NormalizeName("finger heart"), "noms comparés sans espaces ni tirets");
+        Check(GiftEffects.EffectIds.Length == GiftEffects.EffectNames.Length, "chaque action a un nom affiché");
+    }
+
+    static string FindRoot()
+    {
+        var dir = new System.IO.DirectoryInfo(AppContext.BaseDirectory);
+        while (dir != null && !System.IO.Directory.Exists(System.IO.Path.Combine(dir.FullName, "Assets"))) dir = dir.Parent;
+        return dir?.FullName ?? ".";
     }
 
     static void Progression()

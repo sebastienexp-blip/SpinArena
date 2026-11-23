@@ -28,6 +28,9 @@ namespace SpinArena.Tops
         public float DamageDealt { get; private set; }
         public Rigidbody Body => _rb;
         public Color Glow { get; private set; }
+        /// <summary>Point au-dessus de la toupie où s'affiche son pseudo.</summary>
+        public Vector3 NameAnchor { get; private set; }
+        public string ShortName => DisplayName == null ? "" : DisplayName.Length > 14 ? DisplayName.Substring(0, 13) + "…" : DisplayName;
 
         public System.Action<TopController, TopController, float, Vector3> Impact; // (victime, attaquant, dégâts, point)
         public System.Action<TopController, Vector3> WallHit;
@@ -433,7 +436,8 @@ namespace SpinArena.Tops
             {
                 _label.color = frac < 0.25f && State == TopState.Fighting ? new Color(1f, 0.45f, 0.4f) : Color.white;
                 var disp = GameConfig.Current.display;
-                _label.gameObject.SetActive(disp.showNames && State != TopState.Eliminated);
+                // Les pseudos sont affichés par l'interface (NameTags) : plus nets et lisibles qu'un texte 3D.
+                _label.gameObject.SetActive(false);
                 _photo.gameObject.SetActive(disp.showPhotos && _hasPhoto && State != TopState.Eliminated);
                 if (!disp.trails && _trail.emitting) _trail.emitting = false;
             }
@@ -453,6 +457,7 @@ namespace SpinArena.Tops
             _photo.transform.rotation = Quaternion.LookRotation(-normal, cam.transform.up);
             _photo.transform.localScale = Vector3.one * (0.62f * k);
             _label.transform.position = transform.position + up * (1.25f * k) + Vector3.up * 0.4f;
+            NameAnchor = transform.position + Vector3.up * (0.75f * k);
             _label.transform.rotation = face;
         }
 

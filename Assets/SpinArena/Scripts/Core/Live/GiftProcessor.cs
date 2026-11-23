@@ -82,6 +82,8 @@ namespace SpinArena.Core.Live
         public string userId;
         public string userName;
         public string giftName;
+        /// <summary>Nom du cadeau tel qu'écrit dans la règle trouvée (sert à retrouver la bonne image).</summary>
+        public string ruleName;
         public string giftImageUrl;
         public GiftTier tier;
         public string effect;
@@ -126,12 +128,23 @@ namespace SpinArena.Core.Live
         {
             if (!string.IsNullOrEmpty(giftName))
             {
-                var named = _s.rules.FirstOrDefault(r => !string.IsNullOrEmpty(r.giftName)
-                                                         && string.Equals(r.giftName, giftName, StringComparison.OrdinalIgnoreCase));
+                string key = NormalizeName(giftName);
+                var named = _s.rules.FirstOrDefault(r => !string.IsNullOrEmpty(r.giftName) && NormalizeName(r.giftName) == key);
                 if (named != null) return named;
             }
             return _s.rules.Where(r => string.IsNullOrEmpty(r.giftName) && diamonds >= r.minDiamonds)
                            .OrderByDescending(r => r.minDiamonds).FirstOrDefault();
+        }
+
+        /// <summary>Nom comparable : minuscules, sans accents, espaces ni ponctuation (« Finger Heart » = « fingerheart »).</summary>
+        public static string NormalizeName(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return "";
+            var norm = name.Normalize(System.Text.NormalizationForm.FormD);
+            var sb = new System.Text.StringBuilder(norm.Length);
+            foreach (char c in norm)
+                if (char.IsLetterOrDigit(c)) sb.Append(char.ToLowerInvariant(c));
+            return sb.ToString();
         }
 
         /// <summary>
@@ -185,6 +198,7 @@ namespace SpinArena.Core.Live
                     userId = e.user.Key,
                     userName = e.user.DisplayName,
                     giftName = e.giftName,
+                    ruleName = string.IsNullOrEmpty(rule.giftName) ? null : rule.giftName,
                     giftImageUrl = e.giftImageUrl,
                     tier = rule.tier,
                     effect = rule.effect,
