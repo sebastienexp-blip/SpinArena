@@ -1,0 +1,152 @@
+# SPIN ARENA — tests puis construction dans le cloud :
+#  - APK Android (release « apk-derniere », à installer sur le téléphone)
+#  - version Windows pour le banc d'essai automatique (release « labo-pc »)
+#  - pont Termux (release « pont-termux »)
+# Se lance à chaque modification, ou à la demande (onglet Actions → Run workflow).
+name: Build — tests, APK et banc d'essai
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'Assets/**'
+      - 'Packages/**'
+      - 'ProjectSettings/**'
+      - 'bridge/**'
+      - 'tests/**'
+      - '.github/workflows/build.yml'
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Tests du noyau du jeu (C#)
+        run: dotnet run --project tests/Core.Tests
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Tests du pont TikTok
+        working-directory: bridge
+        run: npm install --no-audit --no-fund && npm test && node --check spin-bridge.mjs
+      - name: Publier le pont Termux
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          (cd bridge && rm -rf node_modules && zip -qr ../spin-bridge-termux.zip .)
+          gh release view -R ${{ github.repository }} pont-termux >/dev/null 2>&1 || gh release create -R ${{ github.repository }} pont-termux --target ${{ github.sha }} --prerelease --title "Pont Termux" --notes "Pont TikTok LIVE pour Termux"
+          gh release upload -R ${{ github.repository }} pont-termux spin-bridge-termux.zip --clobber
+
+  build:
+    needs: tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: android
+            target: Android
+            method: SpinArena.EditorTools.Builder.BuildAndroid
+            artifact: build/Android/SpinArena.apk
+          - name: windows
+            target: StandaloneWindows64
+            method: SpinArena.EditorTools.Builder.BuildWindows
+            artifact: build/Windows
+    steps:
+      - name: Libérer de l'espace disque
+        uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          tool-cache: ${{ matrix.name == 'android' }}
+          android: true
+          dotnet: true
+          swap-storage: false
+          haskell: true
+          large-packages: ${{ matrix.name == 'android' }}
+
+      - name: Mémoire d'échange (16 Go)
+        run: |
+          sudo swapoff -a || true
+          sudo fallocate -l 16G /mnt/sa.swap && sudo chmod 600 /mnt/sa.swap && sudo mkswap /mnt/sa.swap && sudo swapon /mnt/sa.swap
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/cache/restore@v4
+        with:
+          path: Library
+          key: Library-${{ matrix.name }}-${{ hashFiles('Packages/manifest.json', 'ProjectSettings/ProjectVersion.txt') }}
+          restore-keys: Library-${{ matrix.name }}-
+
+      - name: Vérifier la licence Unity
+        env:
+          SECRET_LICENSE: ${{ secrets.UNITY_LICENSE }}
+        run: |
+          if [ -z "$SECRET_LICENSE" ]; then echo "::error::Secret UNITY_LICENSE absent (Settings → Secrets and variables → Actions)"; exit 1; fi
+          echo "${GITHUB_RUN_NUMBER}" > ci-build-number.txt
+
+      - name: Unity — construction
+        id: unity
+        uses: game-ci/unity-builder@v4
+        continue-on-error: true
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          targetPlatform: ${{ matrix.target }}
+          buildMethod: ${{ matrix.method }}
+          allowDirtyBuild: true
+          dockerMemoryLimit: 30g
+
+      - name: Rapport
+        if: always()
+        run: |
+          sudo chown -R "$(id -u):$(id -g)" . || true
+          mkdir -p ci-out/${{ matrix.name }}
+          [ -f ci-out/${{ matrix.name }}/build.md ] || { echo "# Unity s'est arrêté avant la fin"; grep -rhoaE "[A-Za-z0-9_/.-]+\.cs\([0-9]+,[0-9]+\): error CS[0-9]+: [^\"\\]{0,300}" Library/Bee Logs Temp 2>/dev/null | sort -u | head -60; } > ci-out/${{ matrix.name }}/build.md || true
+          cat ci-out/${{ matrix.name }}/build.md
+          cat ci-out/${{ matrix.name }}/build.md >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        continue-on-error: true
+        with:
+          name: ${{ matrix.name }}
+          retention-days: 3
+          path: |
+            ${{ matrix.artifact }}
+            ci-out/${{ matrix.name }}/build.md
+          if-no-files-found: warn
+
+      - name: Sauver le cache Library
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: Library
+          key: Library-${{ matrix.name }}-${{ hashFiles('Packages/manifest.json', 'ProjectSettings/ProjectVersion.txt') }}-${{ github.run_id }}
+
+      - name: Résultat
+        run: |
+          if [ "${{ matrix.name }}" = "windows" ]; then test -f build/Windows/SpinArena.exe; else test -e "${{ matrix.artifact }}"; fi
+
+      - name: Publier (release téléchargeable depuis le téléphone)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "${{ matrix.name }}" = "android" ]; then T=apk-derniere; F=build/Android/SpinArena.apk;
+          else T=labo-pc; (cd build/Windows && zip -qr ../../SpinArena-Windows.zip .); F=SpinArena-Windows.zip; fi
+          gh release view -R ${{ github.repository }} $T >/dev/null 2>&1 || gh release create -R ${{ github.repository }} $T --target ${{ github.sha }} --prerelease --title "$T" --notes "Build automatique"
+          gh release upload -R ${{ github.repository }} $T "$F" --clobber
+          gh release edit -R ${{ github.repository }} $T --title "Spin Arena 0.1.${GITHUB_RUN_NUMBER} (${{ matrix.name }})" --notes "Build automatique n°${GITHUB_RUN_NUMBER} (commit ${GITHUB_SHA::7})"

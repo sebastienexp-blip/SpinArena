@@ -1,0 +1,75 @@
+{
+    "round": {
+        "maxParticipants": 50,
+        "minParticipants": 2,
+        "lobbySeconds": 25.0,
+        "countdownSeconds": 5.0,
+        "maxFightSeconds": 150.0,
+        "victorySeconds": 9.0,
+        "lateJoinSeconds": 10.0,
+        "suddenDeathDecay": 4.0,
+        "autoRejoin": true
+    },
+    "commands": {
+        "infoCooldown": 20.0,
+        "combatCooldown": 8.0,
+        "specialCooldown": 25.0,
+        "burstMax": 6,
+        "burstWindow": 30.0,
+        "globalInfoPerMinute": 12
+    },
+    "gifts": {
+        "rules": [
+            { "giftName": "Rose", "minDiamonds": 0, "tier": 0, "effect": "spin_boost_all", "perUserCooldown": 0.0 },
+            { "giftName": "TikTok", "minDiamonds": 0, "tier": 0, "effect": "spin_boost_all", "perUserCooldown": 0.0 },
+            { "giftName": "", "minDiamonds": 1000, "tier": 3, "effect": "meteor_storm", "perUserCooldown": 60.0 },
+            { "giftName": "", "minDiamonds": 100, "tier": 2, "effect": "special_attack", "perUserCooldown": 10.0 },
+            { "giftName": "", "minDiamonds": 5, "tier": 1, "effect": "power_up", "perUserCooldown": 4.0 },
+            { "giftName": "", "minDiamonds": 1, "tier": 0, "effect": "spin_boost_all", "perUserCooldown": 0.0 }
+        ],
+        "maxActivationsPerSecond": 3.0,
+        "maxPerUserPerMinute": 20,
+        "maxQueue": 200,
+        "maxActivationsPerGift": 10,
+        "historySize": 300
+    },
+    "rewards": {
+        "xpParticipation": 40,
+        "xpPerElimination": 25,
+        "xpPerSurvivedSecond": 1,
+        "xpWin": 200,
+        "xpTop3": 60,
+        "coinsParticipation": 10,
+        "coinsPerElimination": 5,
+        "coinsWin": 100
+    },
+    "arena": {
+        "radius": 16.0,
+        "rimHeight": 2.4,
+        "wallHeight": 0.7,
+        "pocketCount": 4,
+        "pocketDegrees": 22.0,
+        "theme": "electric"
+    },
+    "live": {
+        "connector": "bridge",
+        "bridgeUrl": "ws://127.0.0.1:8787/",
+        "demoSpectators": 30,
+        "inactivityMinutes": 15.0
+    },
+    "effects": {
+        "collectiveSpinPerGift": 0.015,
+        "collectiveSpinCap": 0.08,
+        "powerUpSeconds": 6.0,
+        "powerUpDamage": 1.25,
+        "attackBuff": 1.15,
+        "attackSeconds": 5.0,
+        "shieldReduction": 0.25,
+        "shieldSeconds": 4.0,
+        "turboImpulse": 9.0,
+        "shockwaveRadius": 4.0,
+        "shockwaveDamage": 0.06,
+        "meteorDamage": 0.10,
+        "meteorCount": 8
+    }
+}

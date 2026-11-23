@@ -1,0 +1,76 @@
+using UnityEngine;
+
+namespace SpinArena.CameraRig
+{
+    /// <summary>
+    /// Caméra de réalisation : vue d'ensemble qui tourne lentement, rapprochement quand il reste peu de survivants,
+    /// plan sur le vainqueur, secousses sur les gros impacts.
+    /// </summary>
+    public sealed class CameraDirector : MonoBehaviour
+    {
+        public static CameraDirector Instance { get; private set; }
+        public Camera Cam { get; private set; }
+
+        float _arenaRadius = 16f;
+        float _orbit;
+        float _shake;
+        Transform _focus;
+        Vector3 _focusPoint;
+        float _closeness;       // 0 = vue d'ensemble, 1 = plan rapproché
+        float _targetCloseness;
+        Vector3 _smoothedFocus;
+
+        void Awake()
+        {
+            Instance = this;
+            Cam = gameObject.AddComponent<Camera>();
+            Cam.clearFlags = CameraClearFlags.SolidColor;
+            Cam.backgroundColor = new Color(0.02f, 0.03f, 0.07f);
+            Cam.fieldOfView = 45f;
+            Cam.nearClipPlane = 0.3f;
+            Cam.farClipPlane = 200f;
+            Cam.allowHDR = true;
+            gameObject.tag = "MainCamera";
+            gameObject.AddComponent<AudioListener>();
+        }
+
+        public void Configure(float arenaRadius) => _arenaRadius = arenaRadius;
+
+        /// <summary>Plan sur une toupie (null = retour à la vue d'ensemble).</summary>
+        public void Focus(Transform t, float closeness)
+        {
+            _focus = t;
+            _targetCloseness = t != null ? closeness : 0f;
+        }
+
+        /// <summary>Resserre légèrement le cadre selon le nombre de survivants.</summary>
+        public void SetTension(float tension01)
+        {
+            if (_focus == null) _targetCloseness = Mathf.Clamp01(tension01) * 0.35f;
+        }
+
+        public void Shake(float amount) => _shake = Mathf.Min(_shake + amount, 0.6f);
+
+        void LateUpdate()
+        {
+            float dt = Time.unscaledDeltaTime;
+            _orbit += dt * (_focus != null ? 10f : 3.5f);
+            _closeness = Mathf.MoveTowards(_closeness, _targetCloseness, dt * 0.6f);
+            _focusPoint = _focus != null && _focus.gameObject.activeInHierarchy ? _focus.position : Vector3.zero;
+            _smoothedFocus = Vector3.Lerp(_smoothedFocus, _focusPoint, 1f - Mathf.Exp(-dt * 3f));
+
+            // Vue d'ensemble : toute l'arène tient dans un écran 16:9 (caméra en hauteur, inclinée).
+            float dist = Mathf.Lerp(_arenaRadius * 2.45f, 7f, _closeness);
+            float pitch = Mathf.Lerp(52f, 30f, _closeness);
+            Quaternion rot = Quaternion.Euler(pitch, _orbit, 0f);
+            Vector3 look = Vector3.Lerp(Vector3.zero, _smoothedFocus + Vector3.up * 0.6f, Mathf.Clamp01(_closeness * 2f));
+            Vector3 pos = look - rot * Vector3.forward * dist;
+            if (_shake > 0f)
+            {
+                pos += Random.insideUnitSphere * _shake;
+                _shake = Mathf.MoveTowards(_shake, 0f, dt * 1.8f);
+            }
+            transform.SetPositionAndRotation(pos, rot);
+        }
+    }
+}
