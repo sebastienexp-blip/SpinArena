@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Linq;
+using SpinArena.Audio;
 using SpinArena.CameraRig;
 using SpinArena.Core.Elements;
 using SpinArena.Core.Tops;
@@ -25,7 +26,7 @@ namespace SpinArena.Battle
 
         public bool Attack(TopController t) { if (!Ok(t)) return false; t.BuffAttack(_fx.attackBuff, _fx.attackSeconds); Vfx.Sparkle(t.transform.position, new Color(1f, 0.4f, 0.2f)); return true; }
         public bool Shield(TopController t) { if (!Ok(t)) return false; t.BuffShield(_fx.shieldReduction, _fx.shieldSeconds); Vfx.Shockwave(t.transform.position, new Color(0.5f, 0.8f, 1f)); return true; }
-        public bool Turbo(TopController t) { if (!Ok(t)) return false; t.Turbo(_fx.turboImpulse, 3f); Vfx.Sparkle(t.transform.position, t.Glow); return true; }
+        public bool Turbo(TopController t) { if (!Ok(t)) return false; AudioManager.Play("turbo", 0.8f, 0.1f); t.Turbo(_fx.turboImpulse, 3f); Vfx.Sparkle(t.transform.position, t.Glow); return true; }
 
         static bool Ok(TopController t) => t != null && t.State == TopState.Fighting;
 
@@ -102,6 +103,7 @@ namespace SpinArena.Battle
                 o.Push((d.normalized + Vector3.up * 0.15f) * impulse * k * o.Body.mass);
             }
             Vfx.Shockwave(p, src.Glow);
+            AudioManager.Play("shockwave", 0.9f, 0.1f);
             CameraDirector.Instance.Shake(0.1f);
         }
 
@@ -120,6 +122,7 @@ namespace SpinArena.Battle
         {
             if (!Ok(t)) return false;
             t.AddSpin(t.MaxSpin * Mathf.Min(fraction, 0.3f));
+            AudioManager.Play("heal", 0.6f, 0.15f);
             Vfx.Sparkle(t.transform.position, new Color(0.5f, 1f, 0.6f));
             return true;
         }
@@ -137,6 +140,7 @@ namespace SpinArena.Battle
             if (t == null || !t.Alive) return false;
             t.Grow(amount);
             Vfx.JoinBeam(t.transform.position, t.Glow);
+            AudioManager.Play("grow", 0.8f, 0.2f);
             return true;
         }
 
@@ -148,6 +152,7 @@ namespace SpinArena.Battle
             if (o == null) return false;
             o.Body.SetVelocity(Vector3.zero);
             o.Slow(seconds);
+            AudioManager.Play("freeze", 0.8f, 0.2f);
             Vfx.Shockwave(o.transform.position, new Color(0.6f, 0.9f, 1f));
             return true;
         }
@@ -162,6 +167,7 @@ namespace SpinArena.Battle
             o.Push((d + Vector3.up * 0.2f) * 7f * power * o.Body.mass);
             o.TakeDamage(o.MaxSpin * 0.03f * power, t.PlayerId);
             Vfx.Impact(o.transform.position + Vector3.up * 0.4f, t.Glow, Color.white, 90f);
+            AudioManager.Play("impact", 1f, 0.05f);
             return true;
         }
 
@@ -205,6 +211,7 @@ namespace SpinArena.Battle
             for (int i = 0; i < 3 && Ok(t); i++)
             {
                 t.Turbo(_fx.turboImpulse, 1.2f);
+                AudioManager.Play("turbo", 0.8f, 0.1f);
                 Vfx.Sparkle(t.transform.position, t.Glow);
                 yield return new WaitForSeconds(0.45f);
             }
@@ -215,6 +222,7 @@ namespace SpinArena.Battle
         {
             if (!Ok(t)) return false;
             t.Grow(0.3f);
+            AudioManager.Play("grow", 1f, 0.2f, 0f);
             t.BuffPower(1.3f, 10f);
             t.BuffShield(0.35f, 10f);
             Vfx.JoinBeam(t.transform.position, new Color(1f, 0.85f, 0.3f));
@@ -248,6 +256,7 @@ namespace SpinArena.Battle
         public void Tornado()
         {
             StartCoroutine(TornadoRoutine());
+            AudioManager.Play("tornado", 1f, 1f, 0f);
             MeteorStorm(2);
         }
 
@@ -323,6 +332,7 @@ namespace SpinArena.Battle
         void Land(Vector3 p)
         {
             Vfx.Explosion(p, new Color(1f, 0.5f, 0.15f), 1.3f);
+            AudioManager.Play("meteor", 0.9f, 0.12f);
             CameraDirector.Instance.Shake(0.22f);
             foreach (var o in _br.Fighting().ToList())
             {

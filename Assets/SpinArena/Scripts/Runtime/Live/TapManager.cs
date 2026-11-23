@@ -49,6 +49,7 @@ namespace SpinArena.Live
                 _abilities.SpeedBoost(top, _fx.tapSpeedSeconds);
             }
             VfxManager.Instance.Sparkle(top.transform.position, new Color(1f, 0.45f, 0.6f));
+            Audio.AudioManager.Play("grow", 0.3f, 0.35f);
         }
     }
 }

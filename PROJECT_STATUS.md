@@ -27,4 +27,6 @@ Dernière mise à jour : 23 novembre 2026 — version 0.1 (phase 1 + bases des p
 
 ## Historique
 
+- v0.2 — 21 cadeaux avec leur image et leur action, tapotements (vitesse, rotation, taille), photo de profil posée sur la toupie, retrait des commandes (sauf !join) et du fil d'action, 18 bruitages + 2 musiques ElevenLabs (musique dynamique), APK construit seulement sur demande.
+
 - v0.1 — architecture, noyau testé, arène électrique, 42 toupies, physique, IA, battle royale, HUD, administration, pont Termux, compilation cloud, banc d'essai.

@@ -64,6 +64,7 @@ namespace SpinArena.Live
                 _ab.CollectiveBoost(n);
                 label = "énergie pour toutes les toupies";
             }
+            Audio.AudioManager.Play("gift", 0.8f, 0.15f);
             _hud.GiftPopup(a.userName, GiftIcons.Get(a.giftName), (n > 1 ? "×" + n + "  " : "") + label);
         }
 

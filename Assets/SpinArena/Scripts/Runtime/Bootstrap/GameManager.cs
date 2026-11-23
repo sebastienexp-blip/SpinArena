@@ -71,6 +71,7 @@ namespace SpinArena
             RenderingSetup.Apply(cam.Cam);
             Child<VfxManager>("VFX");
             Child<AvatarCache>("Avatars");
+            Child<Audio.AudioManager>("Audio");
             Hud = Child<HudManager>("UI");
             Players = Child<PlayerManager>("Players");
             Players.Init(Catalog, Config.rewards);

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using SpinArena.Arena;
+using SpinArena.Audio;
 using SpinArena.CameraRig;
 using SpinArena.Core.Battle;
 using SpinArena.Core.Live;
@@ -85,6 +86,7 @@ namespace SpinArena.Battle
             }
             else LayoutStaged();
             VfxManager.Instance.JoinBeam(top.transform.position, top.Glow);
+            AudioManager.Play("join", 0.7f, 0.15f);
             _hud.JoinCard(top.DisplayName, avatar, def);
         }
 
@@ -95,7 +97,7 @@ namespace SpinArena.Battle
             go.AddComponent<Rigidbody>();
             var t = go.AddComponent<TopController>();
             t.Impact = OnImpact;
-            t.WallHit = (top, p) => VfxManager.Instance.WallSparks(p);
+            t.WallHit = (top, p) => { VfxManager.Instance.WallSparks(p); AudioManager.Play("wall", 0.45f, 0.1f); };
             go.SetActive(false);
             return t;
         }
@@ -145,6 +147,8 @@ namespace SpinArena.Battle
                     break;
                 case RoundPhase.Fighting:
                     foreach (var t in _tops.Values) t.Launch(7.5f);
+                    AudioManager.Play("go", 1f, 0.5f, 0f);
+                    AudioManager.Play("launch", 0.8f, 0.5f, 0f);
                     _hud.Banner("LANCEZ !", Round.Participants.Count + " toupies dans l'arène", 1.6f, new Color(1f, 0.85f, 0.3f));
                     CameraDirector.Instance.Shake(0.35f);
                     break;
@@ -164,6 +168,7 @@ namespace SpinArena.Battle
                 {
                     _lastCountdownSecond = s;
                     _hud.Banner(s.ToString(), _countdownAnnounced ? null : "Que le meilleur gagne !", 0.8f);
+                    AudioManager.Play("beep", 0.9f, 0.3f, 0f);
                     _countdownAnnounced = true;
                 }
             }
@@ -199,6 +204,13 @@ namespace SpinArena.Battle
                 _sorted.Sort((a, b) => b.SpinFraction.CompareTo(a.SpinFraction));
                 _hud.SetPlayers(_sorted, _players.LevelOf);
                 _hud.SetPhase(phase, Round.PhaseRemaining, Round.RoundNumber, Round.AliveCount, Round.Participants.Count, Round.NextRoundQueue.Count);
+                int aliveNow = Round.AliveCount;
+                float tension = phase != RoundPhase.Fighting ? 0f : Round.SuddenDeath || aliveNow <= 3 ? 1f : aliveNow <= 8 ? 0.6f : aliveNow <= 20 ? 0.3f : 0f;
+                if (AudioManager.Instance != null)
+                {
+                    AudioManager.Instance.SetPhase(phase, tension);
+                    AudioManager.Instance.SetSpinCrowd(phase == RoundPhase.Fighting ? aliveNow / 25f : 0f);
+                }
             }
         }
 
@@ -207,6 +219,7 @@ namespace SpinArena.Battle
         void OnImpact(TopController victim, TopController attacker, float damage, Vector3 point)
         {
             VfxManager.Instance.Impact(point, victim.Glow, attacker.Glow, damage);
+            AudioManager.Play("impact", Mathf.Clamp(damage / 150f, 0.25f, 1f), 0.06f, 0.12f);
             if (damage > 90f) CameraDirector.Instance.Shake(Mathf.Min(0.25f, damage / 900f));
         }
 
@@ -217,11 +230,13 @@ namespace SpinArena.Battle
             top.Eliminate(ringOut);
             VfxManager.Instance.Explosion(top.transform.position + Vector3.up * 0.3f, top.Glow, ringOut ? 0.7f : 1f);
             CameraDirector.Instance.Shake(0.12f);
+            AudioManager.Play(ringOut ? "ringout" : "elim", 0.85f, 0.08f);
         }
 
         void OnWinner(string winnerId)
         {
             var results = _players.ApplyRound(Round);
+            AudioManager.Play("victory", 1f, 1f, 0f);
             if (winnerId != null && _tops.TryGetValue(winnerId, out var w))
             {
                 CameraDirector.Instance.Focus(w.transform, 1f);

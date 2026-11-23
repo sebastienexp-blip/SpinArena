@@ -42,6 +42,8 @@ namespace SpinArena
             UiFactory.Button("Demo", t, "Mode démo", c, new Vector2(80, -215), new Vector2(300, 74), () => gm.SetConnector("demo"));
             UiFactory.Button("Meteor", t, "Météores (test)", c, new Vector2(390, -215), new Vector2(180, 74), () => gm.Abilities.MeteorStorm(1));
 
+            UiFactory.Button("Music", t, "Musique on/off", c, new Vector2(390, -310), new Vector2(180, 70), () => { var a = Audio.AudioManager.Instance; a.SetMusic(!a.MusicOn); });
+            UiFactory.Button("Sfx", t, "Sons on/off", c, new Vector2(390, -395), new Vector2(180, 70), () => { var a = Audio.AudioManager.Instance; a.SetSfx(!a.SfxOn); });
             _maxText = UiFactory.Label("Max", t, "", 30, TextAnchor.MiddleCenter, Color.white, c, c, new Vector2(-170, -310), new Vector2(380, 60));
             UiFactory.Button("MaxMinus", t, "−5", c, new Vector2(-420, -310), new Vector2(110, 70), () => ChangeMax(-5));
             UiFactory.Button("MaxPlus", t, "+5", c, new Vector2(80, -310), new Vector2(110, 70), () => ChangeMax(5));
