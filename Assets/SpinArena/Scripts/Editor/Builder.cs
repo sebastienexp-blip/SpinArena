@@ -41,7 +41,6 @@ namespace SpinArena.EditorTools
             }
             PlayerSettings.colorSpace = ColorSpace.Linear;
             EnsureMaterials();
-            AlwaysInclude("GUI/Text Shader");
             UseLegacyInput();
             EnsureScene();
             AssetDatabase.SaveAssets();
