@@ -32,3 +32,4 @@ bridge/node_modules/
 .licence/
 *.ulf
 *.alf
+!tests/**/*.csproj
