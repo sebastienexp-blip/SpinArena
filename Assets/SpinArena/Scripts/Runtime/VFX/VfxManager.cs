@@ -122,6 +122,34 @@ namespace SpinArena.VFX
 
         public void Sparkle(Vector3 pos, Color c) => Emit(_beam, pos, 6, c * 1.4f);
 
+        /// <summary>Entonnoir de tornade : particules en hélice qui tournent et montent (à appeler à chaque image).</summary>
+        public void Vortex(Vector3 center, float radius, float phase, Color color)
+        {
+            int n = Mathf.RoundToInt(10 * Mathf.Clamp(GameConfig.Current.display.particles, 0f, 2f));
+            n = Mathf.Min(n, MaxParticlesPerFrame - _budgetThisFrame);
+            if (n <= 0) return;
+            _budgetThisFrame += n;
+            for (int i = 0; i < n; i++)
+            {
+                float h = Random.value * 7f;                 // hauteur dans l'entonnoir
+                float rr = Mathf.Lerp(radius * 0.25f, radius, h / 7f);
+                float a = phase + Random.value * Mathf.PI * 2f;
+                Vector3 p = center + new Vector3(Mathf.Cos(a) * rr, h, Mathf.Sin(a) * rr);
+                Vector3 tangent = new Vector3(-Mathf.Sin(a), 0f, Mathf.Cos(a));
+                var ep = new ParticleSystem.EmitParams
+                {
+                    position = p,
+                    velocity = tangent * (6f + rr * 2f) + Vector3.up * 2.5f,
+                    startColor = Color.Lerp(color, Color.white, Random.value * 0.5f),
+                    startSize = Random.Range(0.25f, 0.6f),
+                    startLifetime = Random.Range(0.4f, 0.8f),
+                    applyShapeToPosition = false
+                };
+                _glow.Emit(ep, 1);
+            }
+            if (Random.value < 0.4f) Emit(_debris, center + Vector3.up * 0.3f, 2, new Color(0.7f, 0.65f, 0.8f));
+        }
+
         // ------------------------------------------------------------------ météores (événement légendaire)
 
         public sealed class Meteor : MonoBehaviour

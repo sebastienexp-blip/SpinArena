@@ -252,29 +252,45 @@ namespace SpinArena.Battle
             return true;
         }
 
-        /// <summary>Tornade : événement d'arène, toutes les toupies sont emportées et perdent de l'énergie (personne n'est épargné).</summary>
+        /// <summary>
+        /// Tornade : un tourbillon se déplace dans l'arène pendant 7 secondes. Les toupies qu'il touche sont aspirées,
+        /// tournent autour de lui et perdent un peu d'énergie. Aucun météore : c'est un événement différent.
+        /// </summary>
         public void Tornado()
         {
             StartCoroutine(TornadoRoutine());
             AudioManager.Play("tornado", 1f, 1f, 0f);
-            MeteorStorm(2);
         }
 
         IEnumerator TornadoRoutine()
         {
-            float end = Time.time + 6f;
-            CameraDirector.Instance.Shake(0.4f);
-            while (Time.time < end)
+            var arena = FindArena();
+            float R = arena != null ? arena.Radius : 16f;
+            const float duration = 7f, reach = 6.5f;
+            float start = Time.time, angle = Random.value * Mathf.PI * 2f, spin = 0f;
+            CameraDirector.Instance.Shake(0.35f);
+            var color = new Color(0.85f, 0.75f, 1f);
+            while (Time.time - start < duration)
             {
-                foreach (var o in _br.Fighting().ToList())
+                float t = (Time.time - start) / duration;
+                // Le tourbillon dessine une boucle à travers l'arène.
+                angle += Time.deltaTime * 0.9f;
+                float r = R * 0.45f * Mathf.Sin(t * Mathf.PI);
+                Vector3 c = new Vector3(Mathf.Cos(angle) * r, 0f, Mathf.Sin(angle) * r);
+                c.y = arena != null ? arena.SurfaceHeight(r) : 0f;
+                spin += Time.deltaTime * 9f;
+                Vfx.Vortex(c, reach * 0.55f, spin, color);
+                foreach (var o in _br.Fighting())
                 {
-                    Vector3 p = o.transform.position.Flat();
-                    Vector3 swirl = Vector3.Cross(Vector3.up, p.normalized) * 14f - p.normalized * 3f;
-                    o.Body.AddForce(swirl, ForceMode.Acceleration);
-                    o.TakeDamage(o.MaxSpin * 0.012f, null);
+                    Vector3 d = (o.transform.position - c).Flat();
+                    float dist = d.magnitude;
+                    if (dist > reach) continue;
+                    float k = 1f - dist / reach;
+                    Vector3 swirl = Vector3.Cross(Vector3.up, d.normalized) * 22f - d.normalized * 9f;
+                    o.Body.AddForce(swirl * k, ForceMode.Acceleration);
+                    o.TakeDamage(o.MaxSpin * 0.025f * k * Time.deltaTime, null);
                 }
-                Vfx.Shockwave(Vector3.zero, new Color(1f, 0.5f, 0.8f));
-                yield return new WaitForSeconds(0.5f);
+                yield return null;
             }
         }
 

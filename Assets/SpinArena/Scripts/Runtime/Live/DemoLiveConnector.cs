@@ -23,7 +23,7 @@ namespace SpinArena.Live
         static readonly (string name, int value)[] Small = { ("Rose", 1), ("TikTok", 1), ("Weights", 1), ("Ice Cream Cone", 1), ("GG", 1), ("Mini Speaker", 1), ("Football", 1), ("Heart Me", 1) };
         static readonly (string name, int value)[] Medium = { ("Finger Heart", 5), ("Panda", 5), ("Mic", 5), ("Hand Wave", 9), ("Perfume", 20), ("Doughnut", 30), ("Cap", 99) };
         static readonly (string name, int value)[] Big = { ("Hand Hearts", 100), ("Sunglasses", 199), ("TikTok Crown", 299), ("Money Gun", 500) };
-        static readonly (string name, int value)[] Huge = { ("Galaxy", 1000), ("Sunset Speedway", 10000) };
+        static readonly (string name, int value)[] Huge = { ("Galaxy", 1000) };
 
         readonly int _count;
         readonly Func<RoundPhase> _phase;

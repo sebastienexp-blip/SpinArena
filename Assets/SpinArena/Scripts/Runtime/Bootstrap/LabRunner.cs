@@ -22,7 +22,7 @@ namespace SpinArena
         readonly List<string> _lines = new List<string>();
         readonly List<float> _fightDurations = new List<float>();
         float _fightStart;
-        bool _done;
+        bool _done, _tornadoDone, _tornadoShot;
 
         public static bool Requested
         {
@@ -93,6 +93,15 @@ namespace SpinArena
                 _fpsSum += fps; _fpsSamples++;
             }
             if (t > _nextShot) { _nextShot += 25f; Shot("vue"); }
+            // Essai de la tornade à chaque manche : 20 s après le lancement, capture 2 s plus tard.
+            var round = GameManager.Instance.Battle.Round;
+            if (round.Phase == RoundPhase.Fighting)
+            {
+                float ft = Time.time - _fightStart;
+                if (!_tornadoDone && ft > 20f) { _tornadoDone = true; GameManager.Instance.Abilities.Tornado(); Log("Tornade déclenchée"); }
+                if (_tornadoDone && !_tornadoShot && ft > 22.5f) { _tornadoShot = true; Shot("tornade"); }
+            }
+            else if (round.Phase == RoundPhase.Lobby) { _tornadoDone = false; _tornadoShot = false; }
             if (_roundsDone >= _targetRounds || t > _maxSeconds) Finish();
         }
 

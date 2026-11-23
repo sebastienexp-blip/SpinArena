@@ -143,8 +143,8 @@
                 "giftName": "Sunglasses",
                 "minDiamonds": 0,
                 "tier": 2,
-                "effect": "rafale",
-                "perUserCooldown": 6.0
+                "effect": "barrage",
+                "perUserCooldown": 10.0
             },
             {
                 "giftName": "TikTok Crown",
@@ -157,8 +157,8 @@
                 "giftName": "Money Gun",
                 "minDiamonds": 0,
                 "tier": 2,
-                "effect": "barrage",
-                "perUserCooldown": 10.0
+                "effect": "tornado",
+                "perUserCooldown": 60.0
             },
             {
                 "giftName": "Galaxy",
@@ -166,13 +166,6 @@
                 "tier": 3,
                 "effect": "meteor_storm",
                 "perUserCooldown": 60.0
-            },
-            {
-                "giftName": "Sunset Speedway",
-                "minDiamonds": 0,
-                "tier": 3,
-                "effect": "tornado",
-                "perUserCooldown": 120.0
             },
             {
                 "giftName": "",
