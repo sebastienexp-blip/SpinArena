@@ -174,8 +174,12 @@ static class Program
         r.Tick(5.01f); r.Tick(3.01f); r.Tick(5f);
         Check(r.RequestJoin("late") == BattleRound.JoinResult.Joined, "entrée tardive autorisée au début");
         r.Tick(6f);
-        Check(r.RequestJoin("later") == BattleRound.JoinResult.Queued, "trop tard : manche suivante");
+        r.Settings.joinAnytime = false;
+        Check(r.RequestJoin("later") == BattleRound.JoinResult.Queued, "sans « à tout moment » : manche suivante");
         Check(r.RequestJoin("later") == BattleRound.JoinResult.AlreadyQueued, "pas de double file");
+        r.Settings.joinAnytime = true;
+        r.Tick(55f);
+        Check(r.SuddenDeath && r.RequestJoin("anytime") == BattleRound.JoinResult.Joined, "à tout moment : entrée même en mort subite");
     }
 
     static void Commands()

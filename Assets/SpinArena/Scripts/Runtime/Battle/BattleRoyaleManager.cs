@@ -87,6 +87,7 @@ namespace SpinArena.Battle
                 pos.y = _arena.SurfaceHeight(_arena.Radius * 0.55f) + 0.4f;
                 top.Stage(pos);
                 top.Launch(6f);
+                top.SetSpinFraction(_cfg.round.lateJoinEnergy);
             }
             else LayoutStaged();
             VfxManager.Instance.JoinBeam(top.transform.position, top.Glow);

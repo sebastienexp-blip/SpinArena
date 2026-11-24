@@ -181,7 +181,7 @@ namespace SpinArena.UI
                 ? "SURVIVANTS " + alive + "/" + total
                 : "INSCRITS " + total + (queued > 0 ? " (+" + queued + ")" : "");
             _hint.text = phase == RoundPhase.Fighting
-                ? "Tape l'écran pour booster et faire grossir ta toupie !"
+                ? "<color=#FFD54A>!join</color> pour entrer à tout moment · tape l'écran pour booster ta toupie"
                 : "Écris <color=#FFD54A>!join</color> dans le chat pour entrer dans l'arène";
         }
 

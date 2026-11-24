@@ -30,6 +30,10 @@ namespace SpinArena.Core.Battle
         public float victorySeconds = 9f;
         /// <summary>Pendant les N premières secondes du combat, un nouveau joueur entre encore directement.</summary>
         public float lateJoinSeconds = 10f;
+        /// <summary>Entrée possible à tout moment du combat (y compris la mort subite). Sinon : seulement pendant lateJoinSeconds.</summary>
+        public bool joinAnytime = true;
+        /// <summary>Énergie d'une toupie qui arrive en cours de combat (fraction de son maximum).</summary>
+        public float lateJoinEnergy = 0.7f;
         /// <summary>Multiplicateur de perte d'énergie après le temps réglementaire (mort subite).</summary>
         public float suddenDeathDecay = 4f;
         /// <summary>Les participants d'une manche sont réinscrits automatiquement à la suivante.</summary>
@@ -106,9 +110,12 @@ namespace SpinArena.Core.Battle
             if (string.IsNullOrEmpty(playerId)) throw new ArgumentException(nameof(playerId));
             if (_byId.ContainsKey(playerId)) return JoinResult.AlreadyIn;
 
+            bool fighting = Phase == RoundPhase.Fighting;
             bool canEnterNow = Phase == RoundPhase.Lobby || Phase == RoundPhase.Countdown
-                               || (Phase == RoundPhase.Fighting && PhaseTime <= Settings.lateJoinSeconds && !SuddenDeath);
-            if (canEnterNow && _participants.Count < Settings.maxParticipants)
+                               || (fighting && (Settings.joinAnytime || (PhaseTime <= Settings.lateJoinSeconds && !SuddenDeath)));
+            // Pendant le combat, la place se compte en toupies encore en lice (les éliminés libèrent leur place).
+            int occupied = fighting ? AliveCount : _participants.Count;
+            if (canEnterNow && occupied < Settings.maxParticipants)
             {
                 var p = new Participant { playerId = playerId };
                 _participants.Add(p);

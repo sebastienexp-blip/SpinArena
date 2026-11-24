@@ -170,7 +170,9 @@ namespace SpinArena
             Stepper("Compte à rebours", () => r.countdownSeconds, v => r.countdownSeconds = v, 3, 15, 1, Sec);
             Stepper("Durée du combat avant la mort subite", () => r.maxFightSeconds, v => r.maxFightSeconds = v, 60, 600, 15, Sec);
             Stepper("Écran du vainqueur", () => r.victorySeconds, v => r.victorySeconds = v, 4, 30, 1, Sec);
-            Stepper("Entrée possible après le lancement", () => r.lateJoinSeconds, v => r.lateJoinSeconds = v, 0, 60, 5, Sec);
+            Toggle("Rejoindre à tout moment (même en plein combat)", () => r.joinAnytime, v => r.joinAnytime = v);
+            Stepper("Énergie à l'arrivée en cours de combat", () => r.lateJoinEnergy, v => r.lateJoinEnergy = v, 0.3f, 1f, 0.1f, Pct);
+            Stepper("Sinon, entrée possible après le lancement", () => r.lateJoinSeconds, v => r.lateJoinSeconds = v, 0, 60, 5, Sec);
             Stepper("Mort subite : perte d'énergie", () => r.suddenDeathDecay, v => r.suddenDeathDecay = v, 1, 10, 0.5f, v => "×" + v.ToString("0.0"));
         }
 
