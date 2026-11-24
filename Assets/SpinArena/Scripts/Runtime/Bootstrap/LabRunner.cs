@@ -23,7 +23,8 @@ namespace SpinArena
         readonly List<string> _lines = new List<string>();
         readonly List<float> _fightDurations = new List<float>();
         float _fightStart;
-        bool _done, _tornadoDone, _tornadoShot, _reviveDone, _reviveShot;
+        bool _done, _tornadoDone, _tornadoShot, _reviveDone, _reviveShot, _closeupDone, _closeupShot;
+        Tops.TopController _closeupTarget;
 
         public static bool Requested
         {
@@ -115,7 +116,24 @@ namespace SpinArena
                 }
                 if (_reviveDone && !_reviveShot && ft > 33f) { _reviveShot = true; Shot("retour"); Log("Joueur revenu en jeu : " + (round.Participants.Any(p => p.revives > 0 && p.alive) ? "oui" : "non")); }
             }
-            else if (round.Phase == RoundPhase.Lobby) { _tornadoDone = false; _tornadoShot = false; _reviveDone = false; _reviveShot = false; }
+            else if (round.Phase == RoundPhase.Lobby)
+            {
+                _tornadoDone = false; _tornadoShot = false; _reviveDone = false; _reviveShot = false;
+                // Gros plan sur une toupie pendant les inscriptions (contrôle du rendu des toupies).
+                var tops = GameManager.Instance.Battle.Tops;
+                if (!_closeupDone && round.PhaseTime > 6f && tops.Count > 3)
+                {
+                    _closeupDone = true;
+                    _closeupTarget = tops.Values.OrderByDescending(x => (int)x.Def.rarity).First();
+                    CameraRig.CameraDirector.Instance.FocusFast(_closeupTarget.transform, 1f);
+                }
+                if (_closeupDone && !_closeupShot && round.PhaseTime > 8.5f)
+                {
+                    _closeupShot = true;
+                    Shot("gros_plan");
+                    CameraRig.CameraDirector.Instance.Focus(null, 0f);
+                }
+            }
             if (_roundsDone >= _targetRounds || t > _maxSeconds) Finish();
         }
 
@@ -137,6 +155,7 @@ namespace SpinArena
             sb.AppendLine("- Commandes acceptées : " + gm.Commands.Accepted + " · refusées : " + gm.Commands.Rejected);
             sb.AppendLine("- Dons simulés reçus : " + gm.Gifts.Processor.Received + " · exécutés : " + gm.Gifts.Executed + " · doublons : " + gm.Gifts.Processor.Duplicates);
             sb.AppendLine("- Actions : sur la toupie du donateur " + gm.Gifts.Personal + " · sur une autre toupie " + gm.Gifts.ForOthers + " · retours en jeu " + gm.Gifts.Revives + " · énergie pour tous " + gm.Gifts.Collective);
+            sb.AppendLine("- Ralentis cinématiques : " + (CameraRig.CinematicDirector.Instance != null ? CameraRig.CinematicDirector.Instance.Played : 0));
             sb.AppendLine("- Erreurs : " + _errors);
             sb.AppendLine();
             foreach (var l in _lines) sb.AppendLine("    " + l);

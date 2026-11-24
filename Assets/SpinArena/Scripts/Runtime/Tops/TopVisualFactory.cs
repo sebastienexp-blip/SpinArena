@@ -14,8 +14,8 @@ namespace SpinArena.Tops
     {
         sealed class TopMeshes
         {
-            public Mesh tip, body, blades, ring, crown;
-            public Material primary, secondary, glow, tipMat;
+            public Mesh tip, body, blades, bladeEdges, ring, ridge, crown, gem, spokes;
+            public Material primary, secondary, glow, tipMat, gemMat;
         }
 
         static readonly Dictionary<string, TopMeshes> Cache = new Dictionary<string, TopMeshes>();
@@ -33,6 +33,10 @@ namespace SpinArena.Tops
             Add(spin, "Blades", m.blades, m.secondary);
             Add(spin, "Ring", m.ring, m.glow);
             Add(spin, "Crown", m.crown, m.primary);
+            Add(spin, "BladeEdges", m.bladeEdges, m.glow);
+            Add(spin, "Ridge", m.ridge, m.secondary);
+            Add(spin, "Gem", m.gem, m.gemMat);
+            Add(spin, "Spokes", m.spokes, m.secondary);
             return spin;
         }
 
@@ -61,12 +65,19 @@ namespace SpinArena.Tops
             m = new TopMeshes
             {
                 tip = Lathe(new[] { V(0.0f, 0.0f), V(0.035f, 0.01f), V(0.07f, 0.06f), V(0.11f, 0.12f), V(0.0f, 0.12f) }, 24),
-                body = Lathe(BodyProfile(v), 48),
-                blades = Blades(def.bladeCount, v, rar),
-                ring = Lathe(new[] { V(0.30f, 0.205f), V(0.335f, 0.215f), V(0.335f, 0.235f), V(0.30f, 0.245f) }, 64),
-                crown = Lathe(CrownProfile(v), 40),
-                primary = MaterialLibrary.Metal(primary, 0.85f, 0.7f + rar * 0.03f, Color.black),
-                secondary = MaterialLibrary.Metal(secondary, 1f, 0.82f, glow * (0.05f * rar)),
+                body = Lathe(BodyProfile(v), 72),
+                blades = Blades(def.bladeCount, v, rar, 0.17f, 0.23f + 0.01f * (v % 2), 1f),
+                // Liseré lumineux le long des lames (un peu plus large, très fin) : les lames brillent sur les bords.
+                bladeEdges = Blades(def.bladeCount, v, rar, 0.192f, 0.204f, 1.018f),
+                ring = Lathe(new[] { V(0.30f, 0.205f), V(0.335f, 0.215f), V(0.335f, 0.235f), V(0.30f, 0.245f) }, 72),
+                ridge = Lathe(new[] { V(0.255f, 0.262f), V(0.30f, 0.258f), V(0.312f, 0.272f), V(0.30f, 0.284f), V(0.255f, 0.28f) }, 72),
+                crown = Lathe(CrownProfile(v), 56),
+                // Anneau de cristal facetté autour de la photo.
+                gem = Lathe(new[] { V(0.18f, 0.352f + Lift(v)), V(0.215f, 0.342f + Lift(v)), V(0.245f, 0.362f + Lift(v)), V(0.215f, 0.39f + Lift(v)), V(0.18f, 0.375f + Lift(v)), V(0.18f, 0.352f + Lift(v)) }, 10 + 2 * rar),
+                spokes = Spokes(6 + (rar % 3) * 2),
+                primary = MaterialLibrary.Metal(primary, 0.9f, 0.84f + rar * 0.02f, Color.black),
+                secondary = MaterialLibrary.Metal(secondary, 1f, 0.94f, glow * (0.05f * rar)),
+                gemMat = MaterialLibrary.Metal(glow * 0.6f, 0.2f, 0.95f, glow * (1.4f + rar * 0.35f)),
                 glow = MaterialLibrary.Metal(Color.black, 0f, 0.6f, glow * (2.2f + rar * 0.45f)),
                 tipMat = MaterialLibrary.Metal(new Color(0.75f, 0.77f, 0.8f), 1f, 0.9f, Color.black)
             };
@@ -103,6 +114,30 @@ namespace SpinArena.Tops
         /// Révolution d'un profil (r, y) autour de l'axe Y. Le profil est décrit du centre bas vers le centre haut :
         /// la normale extérieure d'un segment P→Q est alors (Δy, −Δr) dans le plan (r, y).
         /// </summary>
+        static Texture2D _blur;
+        /// <summary>Texture de flou de rotation : stries circulaires concentrées vers le bord.</summary>
+        public static Texture2D SpinBlurTexture
+        {
+            get
+            {
+                if (_blur != null) return _blur;
+                const int n = 128;
+                _blur = new Texture2D(n, n, TextureFormat.RGBA32, true) { wrapMode = TextureWrapMode.Clamp, name = "SpinBlur" };
+                var px = new Color32[n * n];
+                for (int y = 0; y < n; y++)
+                for (int x = 0; x < n; x++)
+                {
+                    float u = (x + 0.5f) / n * 2f - 1f, v = (y + 0.5f) / n * 2f - 1f;
+                    float r = Mathf.Sqrt(u * u + v * v);
+                    float ring = Mathf.Clamp01(1f - Mathf.Abs(r - 0.78f) / 0.22f);
+                    float streak = 0.55f + 0.45f * Mathf.Sin(r * 90f) * Mathf.Sin(Mathf.Atan2(v, u) * 3f);
+                    px[y * n + x] = new Color32(255, 255, 255, (byte)(Mathf.Clamp01(ring * streak) * (r < 1f ? 255f : 0f)));
+                }
+                _blur.SetPixels32(px); _blur.Apply(true);
+                return _blur;
+            }
+        }
+
         public static Mesh Lathe(Vector2[] profile, int seg)
         {
             var verts = new List<Vector3>();
@@ -142,11 +177,36 @@ namespace SpinArena.Tops
         }
 
         /// <summary>Lames d'attaque inclinées, réparties autour du disque.</summary>
-        static Mesh Blades(int count, int variant, int rarity)
+        /// <summary>Hauteur du dessus de la couronne selon la forme (pour poser l'anneau de cristal).</summary>
+        static float Lift(int v) => v == 2 ? 0.04f : v == 1 ? -0.03f : 0f;
+
+        /// <summary>Rayons décoratifs en relief sur le dessus du disque.</summary>
+        static Mesh Spokes(int count)
         {
             var verts = new List<Vector3>();
             var tris = new List<int>();
-            float y0 = 0.17f, y1 = 0.23f + 0.01f * (variant % 2);
+            for (int k = 0; k < count; k++)
+            {
+                float a = k / (float)count * Mathf.PI * 2f, w = 0.11f;
+                var poly = new List<Vector2>
+                {
+                    new Vector2(Mathf.Cos(a - w), Mathf.Sin(a - w)) * 0.25f,
+                    new Vector2(Mathf.Cos(a - w * 0.4f), Mathf.Sin(a - w * 0.4f)) * 0.33f,
+                    new Vector2(Mathf.Cos(a + w * 0.4f), Mathf.Sin(a + w * 0.4f)) * 0.33f,
+                    new Vector2(Mathf.Cos(a + w), Mathf.Sin(a + w)) * 0.25f,
+                };
+                Extrude(poly, 0.24f, 0.262f, verts, tris);
+            }
+            var m = new Mesh { name = "Spokes" };
+            m.SetVertices(verts); m.SetTriangles(tris, 0);
+            m.RecalculateNormals(); m.RecalculateBounds();
+            return m;
+        }
+
+        static Mesh Blades(int count, int variant, int rarity, float y0, float y1, float scale)
+        {
+            var verts = new List<Vector3>();
+            var tris = new List<int>();
             float sweep = 0.55f + 0.1f * variant;           // courbure vers l'arrière
             float width = Mathf.PI * 2f / count * (0.42f + 0.04f * rarity);
             for (int k = 0; k < count; k++)
@@ -159,14 +219,14 @@ namespace SpinArena.Tops
                 {
                     float t = i / (float)steps;
                     float ang = a + t * width;
-                    poly.Add(new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * 0.28f);
+                    poly.Add(new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * 0.28f * scale);
                 }
                 for (int i = 0; i <= steps; i++)
                 {
                     float t = 1f - i / (float)steps;
                     float r = Mathf.Lerp(Radius * 0.82f, Radius, Mathf.Sin(t * Mathf.PI * 0.5f));
                     float ang = a + t * width + sweep * (1f - t) * 0.35f;
-                    poly.Add(new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * r);
+                    poly.Add(new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * r * scale);
                 }
                 Extrude(poly, y0, y1, verts, tris);
             }

@@ -184,6 +184,9 @@ namespace SpinArena
             Toggle("Prime sur le joueur le plus redoutable", () => s.bounty, v => s.bounty = v);
             Toggle("Duel final", () => s.finalDuel, v => s.finalDuel = v);
             Toggle("Ralenti sur le coup de grâce", () => s.slowMotion, v => s.slowMotion = v);
+            Toggle("Ralentis avec zoom sur les grosses actions", () => s.cinematics, v => s.cinematics = v);
+            Stepper("Force du ralenti", () => s.slowMotionStrength, v => s.slowMotionStrength = v, 0.2f, 1.4f, 0.1f, Pct);
+            Stepper("Délai minimum entre deux ralentis", () => s.cinematicCooldown, v => s.cinematicCooldown = v, 2f, 30f, 1f, Sec);
             Toggle("Couronne du dernier vainqueur", () => s.championCrown, v => s.championCrown = v);
             Toggle("Podium sur l'écran du vainqueur", () => s.podium, v => s.podium = v);
             Toggle("Meilleur soutien de la manche", () => s.topSupporter, v => s.topSupporter = v);

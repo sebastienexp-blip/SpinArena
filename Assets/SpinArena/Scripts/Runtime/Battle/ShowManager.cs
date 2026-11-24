@@ -104,7 +104,7 @@ namespace SpinArena.Battle
                     kp.bounties++;
                     _hud.Announce("PRIME RÉCUPÉRÉE par " + (kName ?? "?") + " !", new Color(1f, 0.85f, 0.25f));
                     AudioManager.Play("gift", 1f, 0.2f, 0f);
-                    if (killerTop != null) VfxManager.Instance.JoinBeam(killerTop.transform.position, new Color(1f, 0.8f, 0.2f));
+                    if (killerTop != null) { VfxManager.Instance.JoinBeam(killerTop.transform.position, new Color(1f, 0.8f, 0.2f)); CinematicDirector.Instance?.Play(killerTop.transform, 0.3f, 1f, 0.85f, 0.7f); }
                 }
             }
 
@@ -117,7 +117,7 @@ namespace SpinArena.Battle
                 int recent = list.Count(x => now - x < 5f);
                 int total = round.Get(killer)?.eliminations ?? list.Count;
                 if (recent == 2) _hud.Announce("DOUBLÉ ! " + kName, new Color(1f, 0.7f, 0.2f));
-                else if (recent >= 3) _hud.Announce("TRIPLÉ !! " + kName, new Color(1f, 0.4f, 0.9f));
+                else if (recent >= 3) { _hud.Announce("TRIPLÉ !! " + kName, new Color(1f, 0.4f, 0.9f)); CinematicDirector.Instance?.Play(killerTop.transform, 0.3f, 1f, 0.85f, 0.8f, true); }
                 else if (total == 3 || total == 5 || total == 8 || total == 12) _hud.Announce(kName + " : SÉRIE DE " + total + " !", new Color(0.5f, 0.9f, 1f));
             }
 
@@ -135,7 +135,8 @@ namespace SpinArena.Battle
                 {
                     _hud.Banner("DUEL FINAL", two[0].DisplayName + "  contre  " + two[1].DisplayName, 2.5f, new Color(1f, 0.4f, 0.35f));
                     AudioManager.Play("go", 0.8f, 1f, 0f);
-                    CameraDirector.Instance.Focus(two[0].transform, 0.45f);
+                    if (CinematicDirector.Instance == null || !CinematicDirector.Instance.Play(two[0].transform, 0.35f, 1.2f, 0.6f, 0.7f, true))
+                        CameraDirector.Instance.Focus(two[0].transform, 0.45f);
                 }
             }
         }
@@ -168,7 +169,11 @@ namespace SpinArena.Battle
             }
             if (ChampionId != null) _br.TopOf(ChampionId)?.SetCrown(false);
             ChampionId = winnerId;
-            if (S.slowMotion) StartCoroutine(SlowMotion());
+            if (S.slowMotion)
+            {
+                var w = _br.TopOf(winnerId);
+                CinematicDirector.Instance?.Play(w != null ? w.transform : null, 0.25f, 1.6f, 1f, 0.9f, true);
+            }
         }
 
         IEnumerator SlowMotion()

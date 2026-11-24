@@ -97,6 +97,9 @@ namespace SpinArena.Live
             }
             else if (forWhom != null) { label += " pour " + forWhom; ForOthers++; }
             else Personal++;
+            // Grosses actions : ralenti avec zoom.
+            if (effect == "royal" || effect == "barrage" || effect == "tornado" || effect == "meteor_storm" || (effect == "special_attack" && a.diamonds >= 50))
+                CameraRig.CinematicDirector.Instance?.Play(arenaEvent ? null : t?.transform, 0.35f, 1f, 0.8f, 0.75f, true);
             GameManager.Instance?.Show?.OnGiftActivated(a.userId, a.userName);
             Audio.AudioManager.Play("gift", 0.8f, 0.15f);
             _hud.GiftPopup(a.userName, icon, (n > 1 ? "×" + n + "  " : "") + label);

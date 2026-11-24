@@ -32,7 +32,7 @@ namespace SpinArena.Arena
             RenderSettings.ambientSkyColor = new Color(0.20f, 0.26f, 0.42f);
             RenderSettings.ambientEquatorColor = new Color(0.10f, 0.12f, 0.20f);
             RenderSettings.ambientGroundColor = new Color(0.03f, 0.03f, 0.06f);
-            RenderSettings.fog = true;
+            RenderSettings.fog = false; // le fond étoilé lointain resterait masqué par le brouillard
             RenderSettings.fogMode = FogMode.Linear;
             RenderSettings.fogColor = new Color(0.02f, 0.03f, 0.07f);
             RenderSettings.fogStartDistance = 45f;
@@ -42,6 +42,7 @@ namespace SpinArena.Arena
             BuildWalls(s, accent);
             BuildDecor(s, accent);
             BuildLights();
+            BuildShowpieces(s, accent);
         }
 
         // ------------------------------------------------------------------ sol
@@ -95,9 +96,10 @@ namespace SpinArena.Arena
             go.transform.SetParent(transform, false);
             go.AddComponent<MeshFilter>().sharedMesh = mesh;
             var mr = go.AddComponent<MeshRenderer>();
-            var mat = MaterialLibrary.Metal(Color.white, 0.85f, 0.72f, ThemeGlow * 1.8f);
-            Texture2D albedo, emission;
-            MakeFloorTextures(steel, out albedo, out emission);
+            var mat = MaterialLibrary.MetalNormal(Color.white, 0.9f, 0.8f, ThemeGlow * 1.8f);
+            Texture2D albedo, emission, normal;
+            MakeFloorTextures(steel, out albedo, out emission, out normal);
+            if (mat.HasProperty("_BumpMap")) { mat.SetTexture("_BumpMap", normal); mat.SetFloat("_BumpScale", 1f); }
             MaterialLibrary.SetTexture(mat, albedo);
             if (mat.HasProperty("_EmissionMap")) mat.SetTexture("_EmissionMap", emission);
             mr.sharedMaterial = mat;
@@ -108,13 +110,14 @@ namespace SpinArena.Arena
             col.SetPhysics("Floor", 0.04f, 0.05f, true, false);
         }
 
-        void MakeFloorTextures(Color steel, out Texture2D albedo, out Texture2D emission)
+        void MakeFloorTextures(Color steel, out Texture2D albedo, out Texture2D emission, out Texture2D normal)
         {
             const int n = 1024;
             albedo = new Texture2D(n, n, TextureFormat.RGBA32, true) { name = "FloorAlbedo", wrapMode = TextureWrapMode.Clamp, anisoLevel = 4 };
             emission = new Texture2D(n, n, TextureFormat.RGBA32, true) { name = "FloorEmission", wrapMode = TextureWrapMode.Clamp };
             var a = new Color32[n * n];
             var e = new Color32[n * n];
+            var hgt = new float[n * n];
             float ledgeR = Settings.radius / _ledgeOuter; // rayon (0..1) du bord de la cuvette dans la texture
             for (int y = 0; y < n; y++)
             for (int x = 0; x < n; x++)
@@ -132,6 +135,13 @@ namespace SpinArena.Arena
                 float seamR = Mathf.Abs(Mathf.Repeat(r * 9f, 1f) - 0.5f);
                 float seamA = Mathf.Abs(Mathf.Repeat((ang + Mathf.PI) / (Mathf.PI * 2f) * 24f, 1f) - 0.5f);
                 if (seamR > 0.48f || seamA > 0.485f) c *= 0.45f;
+                // Relief : plaques bombées, rainures creuses, rivets aux coins des plaques.
+                float hh = Mathf.Clamp01((0.5f - seamR) * 18f) * Mathf.Clamp01((0.5f - seamA) * 20f);
+                hh += (1f - seamR * 2f) * 0.15f;
+                float rivet = Mathf.Clamp01(1f - (Mathf.Pow(seamR - 0.4f, 2) + Mathf.Pow((seamA - 0.43f) * 4f, 2)) * 900f);
+                hh += rivet * 0.6f;
+                if (rivet > 0.3f) c = Color.Lerp(c, new Color(0.55f, 0.58f, 0.62f), rivet * 0.8f);
+                hgt[y * n + x] = r > ledgeR ? 0.5f : hh;
                 // Lignes lumineuses : cercles de visée, rayons, anneau du bord, logo central.
                 float glow = 0f;
                 glow = Mathf.Max(glow, Line(r, 0.12f, 0.004f));
@@ -150,6 +160,21 @@ namespace SpinArena.Arena
             }
             albedo.SetPixels32(a); albedo.Apply(true, true);
             emission.SetPixels32(e); emission.Apply(true, true);
+
+            // Carte de normales calculée depuis le relief (RG = pente, alpha = 1 : lisible sur mobile comme sur PC).
+            normal = new Texture2D(n, n, TextureFormat.RGBA32, true, true) { name = "FloorNormal", wrapMode = TextureWrapMode.Clamp };
+            var nm = new Color32[n * n];
+            const float strength = 3.5f;
+            for (int y = 0; y < n; y++)
+            for (int x = 0; x < n; x++)
+            {
+                float l = hgt[y * n + Mathf.Max(x - 1, 0)], rr = hgt[y * n + Mathf.Min(x + 1, n - 1)];
+                float dn = hgt[Mathf.Max(y - 1, 0) * n + x], up = hgt[Mathf.Min(y + 1, n - 1) * n + x];
+                var nv = new Vector3((l - rr) * strength, (dn - up) * strength, 1f).normalized;
+                nm[y * n + x] = new Color32((byte)((nv.x * 0.5f + 0.5f) * 255f), (byte)((nv.y * 0.5f + 0.5f) * 255f), (byte)((nv.z * 0.5f + 0.5f) * 255f), 255);
+            }
+            normal.SetPixels32(nm);
+            normal.Apply(true, true);
         }
 
         static float Line(float r, float center, float width) => Mathf.Clamp01(1f - Mathf.Abs(r - center) / width);
@@ -310,9 +335,97 @@ namespace SpinArena.Arena
             rim.transform.rotation = Quaternion.Euler(25f, 150f, 0f);
         }
 
+        // ------------------------------------------------------------------ pièces d'apparat
+
+        Material _chaseMat;
+        Transform _holo;
+        System.Collections.Generic.List<Transform> _searchlights;
+
+        void BuildShowpieces(ArenaSettings s, Color accent)
+        {
+            EnvironmentFactory.ApplyReflections(ThemeGlow, accent);
+            EnvironmentFactory.BuildBackdrop(transform, ThemeGlow, accent);
+            EnvironmentFactory.BuildStands(transform, s.radius, ThemeGlow);
+            _searchlights = EnvironmentFactory.BuildSearchlights(transform, s.radius, ThemeGlow);
+
+            // Chenillard lumineux qui court le long du rebord.
+            const int n = 256;
+            var tex = new Texture2D(n, 8, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Repeat, name = "Chase" };
+            var px = new Color32[n * 8];
+            for (int x = 0; x < n; x++)
+            {
+                float u = x / (float)n;
+                float dash = Mathf.Pow(Mathf.Clamp01(1f - Mathf.Repeat(u * 6f, 1f) * 2.2f), 2f);
+                for (int y = 0; y < 8; y++) px[y * n + x] = new Color32(255, 255, 255, (byte)(dash * 255f));
+            }
+            tex.SetPixels32(px); tex.Apply();
+            var ring = new GameObject("RimChase");
+            ring.transform.SetParent(transform, false);
+            ring.AddComponent<MeshFilter>().sharedMesh = FlatRing(s.radius + 0.38f, s.radius + 0.62f, s.rimHeight + 0.02f, 160, 12f);
+            _chaseMat = new Material(MaterialLibrary.Additive(ThemeGlow * 1.5f, tex));
+            var mr = ring.AddComponent<MeshRenderer>();
+            mr.sharedMaterial = _chaseMat;
+            mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+
+            // Hologramme au-dessus du centre : anneaux qui tournent dans des sens opposés.
+            _holo = new GameObject("CenterHolo").transform;
+            _holo.SetParent(transform, false);
+            for (int i = 0; i < 3; i++)
+            {
+                var h = new GameObject("HoloRing" + i);
+                h.transform.SetParent(_holo, false);
+                h.transform.localPosition = new Vector3(0f, 0.35f + i * 0.45f, 0f);
+                float r = 2.2f - i * 0.5f;
+                h.AddComponent<MeshFilter>().sharedMesh = FlatRing(r, r + 0.12f, 0f, 96, 4f);
+                var hm = new Material(MaterialLibrary.Additive((i == 1 ? accent : ThemeGlow) * 0.9f, tex));
+                if (hm.HasProperty("_Cull")) hm.SetFloat("_Cull", 0f);
+                var hr = h.AddComponent<MeshRenderer>();
+                hr.sharedMaterial = hm;
+                hr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            }
+        }
+
+        /// <summary>Anneau plat (face vers le haut) avec UV u le long du tour.</summary>
+        static Mesh FlatRing(float ri, float ro, float y, int seg, float uRepeat)
+        {
+            var v = new System.Collections.Generic.List<Vector3>(); var uv = new System.Collections.Generic.List<Vector2>(); var t = new System.Collections.Generic.List<int>();
+            for (int j = 0; j <= seg; j++)
+            {
+                float a = j / (float)seg * Mathf.PI * 2f;
+                v.Add(new Vector3(Mathf.Cos(a) * ri, y, Mathf.Sin(a) * ri)); uv.Add(new Vector2(j / (float)seg * uRepeat, 0f));
+                v.Add(new Vector3(Mathf.Cos(a) * ro, y, Mathf.Sin(a) * ro)); uv.Add(new Vector2(j / (float)seg * uRepeat, 1f));
+            }
+            for (int j = 0; j < seg; j++)
+            {
+                int a = j * 2, b = a + 1, c = a + 2, d = a + 3;
+                t.Add(a); t.Add(c); t.Add(b); t.Add(c); t.Add(d); t.Add(b); // face vers le haut
+            }
+            var m = new Mesh { name = "FlatRing" };
+            m.SetVertices(v); m.SetUVs(0, uv); m.SetTriangles(t, 0);
+            m.RecalculateNormals(); m.RecalculateBounds();
+            return m;
+        }
+
         void Update()
         {
             if (_ringLights != null) _ringLights.Rotate(0f, 6f * Time.deltaTime, 0f, Space.World);
+            float t = Time.time;
+            if (_chaseMat != null) _chaseMat.SetTextureOffset("_BaseMap", new Vector2(-t * 0.35f, 0f));
+            if (_holo != null)
+            {
+                for (int i = 0; i < _holo.childCount; i++) _holo.GetChild(i).Rotate(0f, (i % 2 == 0 ? 40f : -55f) * Time.deltaTime, 0f, Space.Self);
+            }
+            if (_searchlights != null)
+            {
+                for (int i = 0; i < _searchlights.Count; i++)
+                {
+                    var sl = _searchlights[i];
+                    // Chaque projecteur vise un point qui se promène dans l'arène.
+                    float a = t * (0.25f + i * 0.05f) + i * 1.7f;
+                    var target = new Vector3(Mathf.Cos(a) * Settings.radius * 0.6f, 0f, Mathf.Sin(a * 1.3f) * Settings.radius * 0.6f);
+                    sl.rotation = Quaternion.LookRotation(target - sl.position);
+                }
+            }
         }
 
         // ------------------------------------------------------------------ règles

@@ -124,6 +124,9 @@ namespace SpinArena
         public bool bounty = true;          // prime sur le joueur le plus redoutable
         public bool finalDuel = true;
         public bool slowMotion = true;      // ralenti sur le coup de grâce
+        public bool cinematics = true;      // ralentis avec zoom sur les grosses actions
+        public float cinematicCooldown = 6f;
+        public float slowMotionStrength = 1f; // 0 = pas de ralenti, 1 = normal, 1.3 = très lent
         public bool championCrown = true;   // le dernier vainqueur porte une couronne
         public bool podium = true;
         public bool topSupporter = true;

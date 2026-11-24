@@ -94,6 +94,15 @@ namespace SpinArena.EditorTools
             mLit.EnableKeyword("_EMISSION");
             mLit.globalIlluminationFlags = MaterialGlobalIlluminationFlags.None;
 
+            var mLitN = Mat("SA_LitNormal", lit);
+            mLitN.SetFloat("_Metallic", 0.9f);
+            mLitN.SetFloat("_Smoothness", 0.8f);
+            mLitN.SetColor("_EmissionColor", Color.black);
+            mLitN.SetTexture("_BumpMap", Texture2D.normalTexture);
+            mLitN.EnableKeyword("_EMISSION");
+            mLitN.EnableKeyword("_NORMALMAP");
+            mLitN.globalIlluminationFlags = MaterialGlobalIlluminationFlags.None;
+
             Mat("SA_Unlit", unlit);
 
             var add = Mat("SA_Additive", particles);
@@ -103,7 +112,7 @@ namespace SpinArena.EditorTools
             var tr = Mat("SA_Transparent", unlit);
             Transparent(tr, additive: false);
 
-            foreach (var n in new[] { "SA_Lit", "SA_Unlit", "SA_Additive", "SA_Transparent" })
+            foreach (var n in new[] { "SA_Lit", "SA_LitNormal", "SA_Unlit", "SA_Additive", "SA_Transparent" })
                 EditorUtility.SetDirty(AssetDatabase.LoadAssetAtPath<Material>(MaterialsDir + "/" + n + ".mat"));
         }
 

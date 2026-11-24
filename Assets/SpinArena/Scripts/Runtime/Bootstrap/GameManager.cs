@@ -69,6 +69,7 @@ namespace SpinArena
             Arena = Child<ArenaManager>("Arena");
             Arena.Build(Config.arena);
             var cam = Child<CameraDirector>("Camera");
+            Child<CinematicDirector>("Cinematics");
             cam.Configure(Config.arena.radius);
             RenderingSetup.Apply(cam.Cam);
             Child<VfxManager>("VFX");

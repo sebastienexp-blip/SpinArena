@@ -226,6 +226,8 @@ namespace SpinArena.Battle
             VfxManager.Instance.Impact(point, victim.Glow, attacker.Glow, damage);
             AudioManager.Play("impact", Mathf.Clamp(damage / 150f, 0.25f, 1f), 0.06f, 0.12f);
             if (damage > 90f) CameraDirector.Instance.Shake(Mathf.Min(0.25f, damage / 900f));
+            // Choc énorme : ralenti avec zoom (le délai minimum évite d'en abuser).
+            if (damage > 150f && Round.AliveCount > 2) { VfxManager.Instance.Explosion(point, Color.Lerp(victim.Glow, attacker.Glow, 0.5f), 0.5f); CinematicDirector.Instance?.Play(victim.transform, 0.3f, 0.7f, 0.75f, 0.55f); }
         }
 
         void OnEliminated(Participant part)
@@ -236,6 +238,7 @@ namespace SpinArena.Battle
             VfxManager.Instance.Explosion(top.transform.position + Vector3.up * 0.3f, top.Glow, ringOut ? 0.7f : 1f);
             CameraDirector.Instance.Shake(0.12f);
             AudioManager.Play(ringOut ? "ringout" : "elim", 0.85f, 0.08f);
+            if (ringOut && Round.AliveCount <= 12 && Round.AliveCount > 1) CinematicDirector.Instance?.Play(top.transform, 0.3f, 0.8f, 0.7f, 0.6f);
         }
 
         void OnWinner(string winnerId)

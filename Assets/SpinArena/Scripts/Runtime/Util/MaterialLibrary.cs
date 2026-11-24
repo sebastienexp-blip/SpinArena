@@ -10,6 +10,7 @@ namespace SpinArena.Util
     public static class MaterialLibrary
     {
         public const string LitName = "SA_Lit";
+        public const string LitNormalName = "SA_LitNormal";
         public const string UnlitName = "SA_Unlit";
         public const string AdditiveName = "SA_Additive";
         public const string TransparentName = "SA_Transparent";
@@ -24,7 +25,7 @@ namespace SpinArena.Util
             if (m == null)
             {
                 // Secours (éditeur sans configuration) : shader trouvé par son nom.
-                string shader = name == LitName ? "Universal Render Pipeline/Lit"
+                string shader = name == LitName || name == LitNormalName ? "Universal Render Pipeline/Lit"
                               : name == UnlitName ? "Universal Render Pipeline/Unlit"
                               : "Universal Render Pipeline/Particles/Unlit";
                 var s = Shader.Find(shader) ?? Shader.Find("Sprites/Default");
@@ -42,6 +43,18 @@ namespace SpinArena.Util
             SetColor(m, baseColor);
             if (m.HasProperty("_Metallic")) m.SetFloat("_Metallic", metallic);
             if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", smoothness);
+            SetEmission(m, emission);
+            return m;
+        }
+
+        /// <summary>Métal PBR avec carte de normales (relief) et émission.</summary>
+        public static Material MetalNormal(Color baseColor, float metallic, float smoothness, Color emission)
+        {
+            var m = new Material(Template(LitNormalName));
+            SetColor(m, baseColor);
+            if (m.HasProperty("_Metallic")) m.SetFloat("_Metallic", metallic);
+            if (m.HasProperty("_Smoothness")) m.SetFloat("_Smoothness", smoothness);
+            m.EnableKeyword("_NORMALMAP");
             SetEmission(m, emission);
             return m;
         }

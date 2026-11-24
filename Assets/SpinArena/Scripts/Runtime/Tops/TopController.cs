@@ -90,6 +90,7 @@ namespace SpinArena.Tops
                 _visualRoot.SetParent(transform, false);
                 _spin = TopVisualFactory.Build(def, _visualRoot);
                 _visualRoot.localScale = Vector3.one * TopScale;
+                BuildSpinBlur();
                 Def = def;
                 Glow = Compat.Hex(def.glowColor, Color.cyan);
                 BuildExtras();
@@ -175,6 +176,27 @@ namespace SpinArena.Tops
         bool _hasPhoto;
 
         // ------------------------------------------------------------------ couronne, prime, halo, fumée
+
+        Material _blurMat;
+        Transform _blur;
+
+        /// <summary>Disque de flou de rotation : plus la toupie tourne vite, plus le flou lumineux est visible.</summary>
+        void BuildSpinBlur()
+        {
+            var q = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            Destroy(q.GetComponent<Collider>());
+            q.name = "SpinBlur";
+            q.transform.SetParent(_spin, false);
+            q.transform.localPosition = new Vector3(0f, 0.215f, 0f);
+            q.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            q.transform.localScale = Vector3.one * 1.08f;
+            _blurMat = new Material(MaterialLibrary.Additive(Color.white, TopVisualFactory.SpinBlurTexture));
+            if (_blurMat.HasProperty("_Cull")) _blurMat.SetFloat("_Cull", 0f);
+            var r = q.GetComponent<MeshRenderer>();
+            r.sharedMaterial = _blurMat;
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            _blur = q.transform;
+        }
 
         public bool Crowned { get; private set; }
         public bool HasBounty { get; private set; }
@@ -497,6 +519,13 @@ namespace SpinArena.Tops
             if (_spin == null) return;
             float dt = Time.deltaTime;
             UpdateExtras();
+            if (_blurMat != null)
+            {
+                float f = State == TopState.Eliminated ? 0f : SpinFraction;
+                var c = Color.Lerp(Color.white, Glow, 0.6f) * (0.15f + 0.45f * f * f);
+                c.a = 0.25f + 0.55f * f;
+                MaterialLibrary.SetColor(_blurMat, c);
+            }
             if (Mathf.Abs(_sizeVisual - _size) > 0.001f || Time.time < _heavyUntil + 0.1f)
             {
                 _sizeVisual = Mathf.MoveTowards(_sizeVisual, _size, dt * 0.8f);

@@ -34,11 +34,32 @@ namespace SpinArena.Rendering
             color.saturation.Override(12f);
             color.contrast.Override(8f);
             color.postExposure.Override(0.15f);
+            _chroma = profile.Add<ChromaticAberration>(true);
+            _chroma.intensity.Override(0f);
+            _lens = profile.Add<LensDistortion>(true);
+            _lens.intensity.Override(0f);
             vol.sharedProfile = profile;
             _volume = vol;
+            go.AddComponent<PulseDriver>();
         }
 
         static Volume _volume;
+        static ChromaticAberration _chroma;
+        static LensDistortion _lens;
+        static float _pulse;
+
+        /// <summary>Impulsion d'image pour les gros coups : aberration chromatique et distorsion qui s'estompent.</summary>
+        public static void Pulse(float strength) => _pulse = Mathf.Max(_pulse, Mathf.Clamp01(strength));
+
+        sealed class PulseDriver : MonoBehaviour
+        {
+            void Update()
+            {
+                _pulse = Mathf.MoveTowards(_pulse, 0f, Time.unscaledDeltaTime * 1.6f);
+                if (_chroma != null) _chroma.intensity.value = _pulse * 0.9f;
+                if (_lens != null) _lens.intensity.value = -_pulse * 0.35f;
+            }
+        }
 
         /// <summary>Qualité graphique réglable dans les options : lueurs, échelle de rendu.</summary>
         public static void ApplyQuality(bool bloom, float renderScale)

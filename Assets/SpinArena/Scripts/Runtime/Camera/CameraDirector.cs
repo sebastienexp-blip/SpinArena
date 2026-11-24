@@ -37,6 +37,20 @@ namespace SpinArena.CameraRig
         public void Configure(float arenaRadius) => _arenaRadius = arenaRadius;
 
         /// <summary>Plan sur une toupie (null = retour à la vue d'ensemble).</summary>
+        float _focusSpeed = 0.6f, _fovPunch;
+
+        /// <summary>Plan rapide pour un ralenti : la caméra fonce sur la cible.</summary>
+        public void FocusFast(Transform t, float closeness)
+        {
+            Focus(t, closeness);
+            _focusSpeed = 3.5f;
+        }
+
+        /// <summary>Petit « coup de zoom » (l'angle de vue se resserre puis revient).</summary>
+        public void Punch(float amount) => _fovPunch = Mathf.Max(_fovPunch, amount);
+
+        public Transform CurrentFocus => _focus;
+
         public void Focus(Transform t, float closeness)
         {
             _focus = t;
@@ -61,7 +75,10 @@ namespace SpinArena.CameraRig
             float dt = Time.unscaledDeltaTime;
             var disp = GameConfig.Current.display;
             _orbit += dt * (_focus != null ? 10f : 3.5f * disp.cameraOrbit);
-            _closeness = Mathf.MoveTowards(_closeness, _targetCloseness, dt * 0.6f);
+            _closeness = Mathf.MoveTowards(_closeness, _targetCloseness, dt * _focusSpeed);
+            if (Mathf.Abs(_closeness - _targetCloseness) < 0.001f) _focusSpeed = 0.6f;
+            _fovPunch = Mathf.MoveTowards(_fovPunch, 0f, dt * 18f);
+            Cam.fieldOfView = 45f - _fovPunch;
             _focusPoint = _focus != null && _focus.gameObject.activeInHierarchy ? _focus.position : Vector3.zero;
             _smoothedFocus = Vector3.Lerp(_smoothedFocus, _focusPoint, 1f - Mathf.Exp(-dt * 3f));
 
