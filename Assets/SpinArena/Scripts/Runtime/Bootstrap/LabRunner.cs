@@ -102,6 +102,18 @@ namespace SpinArena
                 float ft = Time.time - _fightStart;
                 if (!_tornadoDone && ft > 20f) { _tornadoDone = true; GameManager.Instance.Abilities.Tornado(); Log("Tornade déclenchée"); }
                 if (_tornadoDone && !_tornadoShot && ft > 22.5f) { _tornadoShot = true; Shot("tornade"); }
+                // Gros plan sur une toupie en combat (contrôle du rendu des toupies).
+                if (!_closeupDone && ft > 8f)
+                {
+                    _closeupTarget = GameManager.Instance.Battle.Fighting().FirstOrDefault();
+                    if (_closeupTarget != null) { _closeupDone = true; CameraRig.CameraDirector.Instance.FocusFast(_closeupTarget.transform, 1f); }
+                }
+                if (_closeupDone && !_closeupShot && ft > 11f)
+                {
+                    _closeupShot = true;
+                    Shot("gros_plan");
+                    CameraRig.CameraDirector.Instance.Focus(null, 0f);
+                }
                 // Essai du retour en jeu : un joueur éliminé envoie un Doughnut.
                 if (!_reviveDone && ft > 30f)
                 {
@@ -118,21 +130,7 @@ namespace SpinArena
             }
             else if (round.Phase == RoundPhase.Lobby)
             {
-                _tornadoDone = false; _tornadoShot = false; _reviveDone = false; _reviveShot = false;
-                // Gros plan sur une toupie pendant les inscriptions (contrôle du rendu des toupies).
-                var tops = GameManager.Instance.Battle.Tops;
-                if (!_closeupDone && round.PhaseTime > 6f && tops.Count > 3)
-                {
-                    _closeupDone = true;
-                    _closeupTarget = tops.Values.OrderByDescending(x => (int)x.Def.rarity).First();
-                    CameraRig.CameraDirector.Instance.FocusFast(_closeupTarget.transform, 1f);
-                }
-                if (_closeupDone && !_closeupShot && round.PhaseTime > 8.5f)
-                {
-                    _closeupShot = true;
-                    Shot("gros_plan");
-                    CameraRig.CameraDirector.Instance.Focus(null, 0f);
-                }
+                _tornadoDone = false; _tornadoShot = false; _reviveDone = false; _reviveShot = false; _closeupDone = false; _closeupShot = false;
             }
             if (_roundsDone >= _targetRounds || t > _maxSeconds) Finish();
         }

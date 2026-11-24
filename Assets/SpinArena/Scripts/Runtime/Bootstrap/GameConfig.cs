@@ -75,7 +75,7 @@ namespace SpinArena
         public float knockback = 1f;       // force des projections
         public float spinDecay = 1f;       // perte d'énergie naturelle
         public float speed = 1f;           // vitesse de déplacement
-        public float topScale = 1.35f;     // taille de base des toupies
+        public float topScale = 1.55f;     // taille de base des toupies
         public float maxSize = 1.8f;       // taille maximale (tapotements, cadeaux)
         public float launchPower = 7.5f;   // élan au lancement
     }

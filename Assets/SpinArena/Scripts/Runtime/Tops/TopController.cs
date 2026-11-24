@@ -156,7 +156,7 @@ namespace SpinArena.Tops
             {
                 var q = GameObject.CreatePrimitive(PrimitiveType.Quad);
                 q.name = "Photo";
-                Destroy(q.GetComponent<Collider>());
+                DestroyImmediate(q.GetComponent<Collider>()); // immédiat : jamais de collider non convexe sur un corps physique
                 q.transform.SetParent(transform, false);
                 _photo = q.GetComponent<MeshRenderer>();
                 _photo.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
@@ -184,7 +184,7 @@ namespace SpinArena.Tops
         void BuildSpinBlur()
         {
             var q = GameObject.CreatePrimitive(PrimitiveType.Quad);
-            Destroy(q.GetComponent<Collider>());
+            DestroyImmediate(q.GetComponent<Collider>()); // immédiat : jamais de collider non convexe sur un corps physique
             q.name = "SpinBlur";
             q.transform.SetParent(_spin, false);
             q.transform.localPosition = new Vector3(0f, 0.215f, 0f);
@@ -239,7 +239,7 @@ namespace SpinArena.Tops
         Transform BuildAura()
         {
             var q = GameObject.CreatePrimitive(PrimitiveType.Quad);
-            Destroy(q.GetComponent<Collider>());
+            DestroyImmediate(q.GetComponent<Collider>()); // immédiat : jamais de collider non convexe sur un corps physique
             q.name = "Aura";
             q.transform.SetParent(transform, false);
             q.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
