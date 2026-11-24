@@ -45,6 +45,8 @@ namespace SpinArena.Core.Battle
         public int placement;             // 1 = vainqueur, attribué à l'élimination
         public EliminationReason? reason;
         public string eliminatedBy;
+        /// <summary>Primes remportées pendant la manche (le moteur l'incrémente).</summary>
+        public int bounties;
     }
 
     /// <summary>

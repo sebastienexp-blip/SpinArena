@@ -23,6 +23,9 @@ namespace SpinArena.Core.Players
         public int eliminations;
         public int bestPlacement;    // 0 = jamais classé
         public int seasonPoints;
+        public int winStreak;        // victoires d'affilée en cours
+        public int bestWinStreak;
+        public int bountiesClaimed;  // primes remportées (élimination du joueur le plus redoutable)
         public string selectedTopId;
         public List<string> ownedTops = new List<string>();
         public long firstSeenUnix;

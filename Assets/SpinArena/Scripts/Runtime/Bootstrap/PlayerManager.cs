@@ -6,6 +6,7 @@ using SpinArena.Core.Live;
 using SpinArena.Core.Players;
 using SpinArena.Core.Progression;
 using SpinArena.Core.Tops;
+using System.Linq;
 using UnityEngine;
 
 namespace SpinArena
@@ -66,8 +67,9 @@ namespace SpinArena
                 var o = ProgressionRules.Apply(p, new RoundResult
                 {
                     playerId = part.playerId, placement = part.placement, eliminations = part.eliminations,
-                    survivedSeconds = part.survivedSeconds, participants = n
+                    survivedSeconds = part.survivedSeconds, participants = n, bounties = part.bounties
                 }, _rewards);
+                o.unlockedTops.AddRange(TopUnlocks.Apply(p, Catalog).Select(t => t.id));
                 list.Add((p, o, part));
             }
             _dirty = true;

@@ -29,6 +29,8 @@ namespace SpinArena
         public int demoSpectators = 30;
         /// <summary>Un joueur inactif depuis N minutes n'est plus réinscrit automatiquement.</summary>
         public float inactivityMinutes = 15f;
+        /// <summary>Un spectateur qui s'abonne pendant le live entre dans l'arène (gratuit).</summary>
+        public bool followJoins = true;
     }
 
     [Serializable]
@@ -110,6 +112,28 @@ namespace SpinArena
         public float crowdVolume = 0.35f;  // ronronnement des toupies
     }
 
+    /// <summary>Mise en scène et événements d'arène (activables dans les options).</summary>
+    [Serializable]
+    public sealed class ShowSettings
+    {
+        public bool announcements = true;   // première élimination, doublés, séries, top 10/5, dernière chance
+        public bool bounty = true;          // prime sur le joueur le plus redoutable
+        public bool finalDuel = true;
+        public bool slowMotion = true;      // ralenti sur le coup de grâce
+        public bool championCrown = true;   // le dernier vainqueur porte une couronne
+        public bool podium = true;
+        public bool topSupporter = true;
+        public bool levelUps = true;        // montées de niveau et toupies débloquées
+        public bool sessionBoard = true;    // champions du live pendant les inscriptions
+        public bool timerWarning = true;    // alerte 10 s avant la mort subite
+        public bool shrinkingZone = true;   // la zone se resserre pendant la mort subite
+        public bool lightning = true;       // éclairs sur l'arène pendant les combats
+        public float lightningInterval = 18f;
+        public bool speedPads = true;       // accélérateurs au sol
+        public bool rarityAuras = true;     // halo sous les toupies Épique et plus
+        public bool lowEnergySmoke = true;  // fumée des toupies presque à court d'énergie
+    }
+
     /// <summary>Configuration complète, modifiable sans recompiler (Resources/Config/game_config.json).</summary>
     [Serializable]
     public sealed class GameConfig
@@ -124,6 +148,7 @@ namespace SpinArena
         public TuningSettings tuning = new TuningSettings();
         public DisplaySettings display = new DisplaySettings();
         public SoundSettings audio = new SoundSettings();
+        public ShowSettings show = new ShowSettings();
 
         public static GameConfig Current => GameManager.Instance != null ? GameManager.Instance.Config : _fallback ?? (_fallback = new GameConfig());
         static GameConfig _fallback;
@@ -142,6 +167,7 @@ namespace SpinArena
             JsonUtility.FromJsonOverwrite(JsonUtility.ToJson(d.tuning), tuning);
             JsonUtility.FromJsonOverwrite(JsonUtility.ToJson(d.display), display);
             JsonUtility.FromJsonOverwrite(JsonUtility.ToJson(d.audio), audio);
+            JsonUtility.FromJsonOverwrite(JsonUtility.ToJson(d.show), show);
             try { if (File.Exists(OverridePath)) File.Delete(OverridePath); } catch (Exception) { }
         }
 

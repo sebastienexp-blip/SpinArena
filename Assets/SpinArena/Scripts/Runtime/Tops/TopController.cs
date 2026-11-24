@@ -102,6 +102,8 @@ namespace SpinArena.Tops
             SetPhoto(avatar);
             _size = _sizeVisual = 1f;
             _heavyUntil = _slowUntil = 0f;
+            SetCrown(false);
+            HasBounty = false;
             ApplySize();
             _atkUntil = _shieldUntil = _turboUntil = _powerUntil = 0f;
             _lastAttacker = null; _lastHitTime = -100f;
@@ -171,6 +173,92 @@ namespace SpinArena.Tops
             else MaterialLibrary.SetTexture(_photoMat, tex);
         }
         bool _hasPhoto;
+
+        // ------------------------------------------------------------------ couronne, prime, halo, fumée
+
+        public bool Crowned { get; private set; }
+        public bool HasBounty { get; private set; }
+        Transform _crown, _aura;
+        Material _auraMat;
+        float _nextSmoke;
+
+        public void SetBounty(bool on) => HasBounty = on;
+
+        /// <summary>Couronne dorée au-dessus de la toupie du dernier vainqueur.</summary>
+        public void SetCrown(bool on)
+        {
+            Crowned = on;
+            if (on && _crown == null) _crown = BuildCrown();
+            if (_crown != null) _crown.gameObject.SetActive(on);
+        }
+
+        Transform BuildCrown()
+        {
+            var root = new GameObject("Crown").transform;
+            root.SetParent(transform, false);
+            var gold = MaterialLibrary.Metal(new Color(1f, 0.78f, 0.25f), 1f, 0.85f, new Color(1f, 0.6f, 0.1f) * 1.2f);
+            var band = new GameObject("Band");
+            band.transform.SetParent(root, false);
+            band.AddComponent<MeshFilter>().sharedMesh = TopVisualFactory.Lathe(new[] { new Vector2(0.20f, 0f), new Vector2(0.24f, 0f), new Vector2(0.24f, 0.07f), new Vector2(0.20f, 0.07f) }, 32);
+            band.AddComponent<MeshRenderer>().sharedMaterial = gold;
+            var spikeMesh = TopVisualFactory.Lathe(new[] { new Vector2(0f, 0f), new Vector2(0.045f, 0f), new Vector2(0f, 0.13f) }, 12);
+            for (int i = 0; i < 5; i++)
+            {
+                float a = i / 5f * Mathf.PI * 2f;
+                var sp = new GameObject("Spike");
+                sp.transform.SetParent(root, false);
+                sp.transform.localPosition = new Vector3(Mathf.Cos(a) * 0.22f, 0.07f, Mathf.Sin(a) * 0.22f);
+                sp.AddComponent<MeshFilter>().sharedMesh = spikeMesh;
+                sp.AddComponent<MeshRenderer>().sharedMaterial = gold;
+            }
+            return root;
+        }
+
+        Transform BuildAura()
+        {
+            var q = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            Destroy(q.GetComponent<Collider>());
+            q.name = "Aura";
+            q.transform.SetParent(transform, false);
+            q.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            _auraMat = new Material(MaterialLibrary.Additive(Color.white, MaterialLibrary.SoftDot));
+            var r = q.GetComponent<MeshRenderer>();
+            r.sharedMaterial = _auraMat;
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            return q.transform;
+        }
+
+        void UpdateExtras()
+        {
+            var show = GameConfig.Current.show;
+            float k = TopScale * _sizeVisual;
+            if (_crown != null && _crown.gameObject.activeSelf)
+            {
+                _crown.localPosition = new Vector3(0f, 0.5f * k, 0f);
+                _crown.localScale = Vector3.one * k;
+                _crown.Rotate(0f, 60f * Time.deltaTime, 0f, Space.Self);
+            }
+            bool aura = show.rarityAuras && Def != null && Def.rarity >= Rarity.Epic && Alive;
+            if (aura && _aura == null) _aura = BuildAura();
+            if (_aura != null)
+            {
+                _aura.gameObject.SetActive(aura);
+                if (aura)
+                {
+                    float pulse = 0.75f + 0.25f * Mathf.Sin(Time.time * 4f);
+                    _aura.localPosition = new Vector3(0f, 0.03f, 0f);
+                    _aura.localScale = Vector3.one * (1.9f + 0.25f * (int)Def.rarity) * k * pulse;
+                    var c = Compat.Hex(TopDefinition.RarityColor(Def.rarity));
+                    c.a = 0.55f;
+                    MaterialLibrary.SetColor(_auraMat, c);
+                }
+            }
+            if (show.lowEnergySmoke && State == TopState.Fighting && SpinFraction < 0.2f && Time.time > _nextSmoke)
+            {
+                _nextSmoke = Time.time + 0.18f;
+                VFX.VfxManager.Instance?.Smoke(transform.position + Vector3.up * 0.4f * k);
+            }
+        }
 
         // ------------------------------------------------------------------ taille (tapotements, cadeaux)
 
@@ -406,6 +494,7 @@ namespace SpinArena.Tops
         {
             if (_spin == null) return;
             float dt = Time.deltaTime;
+            UpdateExtras();
             if (Mathf.Abs(_sizeVisual - _size) > 0.001f || Time.time < _heavyUntil + 0.1f)
             {
                 _sizeVisual = Mathf.MoveTowards(_sizeVisual, _size, dt * 0.8f);

@@ -122,6 +122,9 @@ namespace SpinArena.VFX
 
         public void Sparkle(Vector3 pos, Color c) => Emit(_beam, pos, 6, c * 1.4f);
 
+        /// <summary>Petite fumée grise (toupie presque à court d'énergie).</summary>
+        public void Smoke(Vector3 pos) => Emit(_glow, pos, 1, new Color(0.45f, 0.45f, 0.5f, 0.6f));
+
         // ------------------------------------------------------------------ tornade (entonnoir visible)
 
         Transform _funnel;

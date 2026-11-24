@@ -31,7 +31,7 @@ namespace SpinArena
         float _firstTap, _refreshTimer;
         readonly Dictionary<string, float> _confirm = new Dictionary<string, float>();
 
-        static readonly string[] Tabs = { "Direct", "Partie", "Combat", "Tapotements", "Cadeaux", "Affichage", "Son", "Live", "Récompenses", "Système" };
+        static readonly string[] Tabs = { "Direct", "Partie", "Spectacle", "Combat", "Tapotements", "Cadeaux", "Affichage", "Son", "Live", "Récompenses", "Système" };
 
         public void Init(GameManager gm)
         {
@@ -54,7 +54,7 @@ namespace SpinArena
             for (int i = 0; i < Tabs.Length; i++)
             {
                 string tab = Tabs[i];
-                var b = UiFactory.Button("Tab" + tab, p.transform, tab, tl, new Vector2(150, -130 - i * 84), new Vector2(270, 74), () => Show(tab));
+                var b = UiFactory.Button("Tab" + tab, p.transform, tab, tl, new Vector2(150, -125 - i * 78), new Vector2(270, 70), () => Show(tab));
                 _tabButtons.Add((b, tab));
             }
 
@@ -122,6 +122,7 @@ namespace SpinArena
             {
                 case "Direct": BuildDirect(); break;
                 case "Partie": BuildRound(); break;
+                case "Spectacle": BuildShow(); break;
                 case "Combat": BuildCombat(); break;
                 case "Tapotements": BuildTaps(); break;
                 case "Cadeaux": BuildGifts(); break;
@@ -171,6 +172,31 @@ namespace SpinArena
             Stepper("Écran du vainqueur", () => r.victorySeconds, v => r.victorySeconds = v, 4, 30, 1, Sec);
             Stepper("Entrée possible après le lancement", () => r.lateJoinSeconds, v => r.lateJoinSeconds = v, 0, 60, 5, Sec);
             Stepper("Mort subite : perte d'énergie", () => r.suddenDeathDecay, v => r.suddenDeathDecay = v, 1, 10, 0.5f, v => "×" + v.ToString("0.0"));
+        }
+
+        void BuildShow()
+        {
+            var s = C.show;
+            Header("Annonces et mise en scène");
+            Toggle("Annonces (première élimination, doublés, séries, top 10/5, dernière chance)", () => s.announcements, v => s.announcements = v);
+            Toggle("Prime sur le joueur le plus redoutable", () => s.bounty, v => s.bounty = v);
+            Toggle("Duel final", () => s.finalDuel, v => s.finalDuel = v);
+            Toggle("Ralenti sur le coup de grâce", () => s.slowMotion, v => s.slowMotion = v);
+            Toggle("Couronne du dernier vainqueur", () => s.championCrown, v => s.championCrown = v);
+            Toggle("Podium sur l'écran du vainqueur", () => s.podium, v => s.podium = v);
+            Toggle("Meilleur soutien de la manche", () => s.topSupporter, v => s.topSupporter = v);
+            Toggle("Montées de niveau et toupies débloquées", () => s.levelUps, v => s.levelUps = v);
+            Toggle("Champions du live pendant les inscriptions", () => s.sessionBoard, v => s.sessionBoard = v);
+            Toggle("Alerte 10 s avant la mort subite", () => s.timerWarning, v => s.timerWarning = v);
+            Header("Arène");
+            Toggle("Zone qui se resserre (mort subite)", () => s.shrinkingZone, v => s.shrinkingZone = v);
+            Toggle("Éclairs sur l'arène", () => s.lightning, v => s.lightning = v);
+            Stepper("Un éclair toutes les", () => s.lightningInterval, v => s.lightningInterval = v, 6f, 60f, 2f, Sec);
+            Toggle("Accélérateurs au sol", () => s.speedPads, v => s.speedPads = v);
+            Toggle("Halo sous les toupies Épique et plus", () => s.rarityAuras, v => s.rarityAuras = v);
+            Toggle("Fumée des toupies presque à court d'énergie", () => s.lowEnergySmoke, v => s.lowEnergySmoke = v);
+            Header("Spectateurs");
+            Toggle("S'abonner fait entrer dans l'arène", () => C.live.followJoins, v => C.live.followJoins = v);
         }
 
         void BuildCombat()

@@ -44,6 +44,7 @@ static class Program
         Test("joueurs", Players);
         Test("progression", Progression);
         Test("cadeaux-images-actions", GiftWiring);
+        Test("déblocages-séries-primes", Unlocks);
 
         Console.WriteLine($"Tests du noyau : {_pass} réussis, {_fail} échoués");
         foreach (var f in Failures) Console.WriteLine("  ÉCHEC : " + f);
@@ -314,6 +315,36 @@ static class Program
             Check(usedImages.Contains(System.IO.Path.GetFileNameWithoutExtension(f)), "image sans cadeau : " + System.IO.Path.GetFileName(f));
         Check(GiftProcessor.NormalizeName("Finger-Heart ") == GiftProcessor.NormalizeName("finger heart"), "noms comparés sans espaces ni tirets");
         Check(GiftEffects.EffectIds.Length == GiftEffects.EffectNames.Length, "chaque action a un nom affiché");
+    }
+
+    static void Unlocks()
+    {
+        var cat = TopCatalog.CreateDefault();
+        var reg = new PlayerRegistry(cat);
+        var p = reg.GetOrCreate(new LiveUser { userId = "unlock" }, 0, out _);
+        var start = cat.Get(p.selectedTopId);
+        Check(TopUnlocks.Apply(p, cat).Count == 0, "niveau 1 : rien de nouveau");
+        p.level = 15;
+        var got = TopUnlocks.Apply(p, cat);
+        Check(got.Count == 2 && got.All(t => t.element == start.element), "niveau 15 : peu commun + rare du même élément");
+        Check(cat.Get(p.selectedTopId).rarity == Rarity.Rare, "la meilleure toupie est équipée");
+        Check(TopUnlocks.Apply(p, cat).Count == 0, "pas de doublon");
+        p.level = 200; TopUnlocks.Apply(p, cat);
+        Check(p.ownedTops.Count == 7 && cat.Get(p.selectedTopId).rarity == Rarity.Divine, "niveau 200 : collection complète de l'élément");
+        Check(TopUnlocks.MaxRarityFor(4) == Rarity.Common && TopUnlocks.MaxRarityFor(5) == Rarity.Uncommon && TopUnlocks.MaxRarityFor(120) == Rarity.Divine, "paliers de rareté");
+
+        var w = new PlayerProfile { id = "w" };
+        var rs = new RewardSettings();
+        var o1 = ProgressionRules.Apply(w, new RoundResult { placement = 1, participants = 10 }, rs);
+        var o2 = ProgressionRules.Apply(w, new RoundResult { placement = 1, participants = 10 }, rs);
+        Check(w.winStreak == 2 && o2.xpGained == o1.xpGained + rs.xpPerStreak, "série de victoires et bonus");
+        ProgressionRules.Apply(w, new RoundResult { placement = 4, participants = 10 }, rs);
+        Check(w.winStreak == 0 && w.bestWinStreak == 2, "série remise à zéro, record gardé");
+        var b = new PlayerProfile { id = "b" };
+        var ob = ProgressionRules.Apply(b, new RoundResult { placement = 5, participants = 10, bounties = 1 }, rs);
+        var b2 = new PlayerProfile { id = "b2" };
+        var ob2 = ProgressionRules.Apply(b2, new RoundResult { placement = 5, participants = 10 }, rs);
+        Check(ob.xpGained - ob2.xpGained == rs.xpBounty && b.bountiesClaimed == 1, "prime : XP bonus");
     }
 
     static string FindRoot()

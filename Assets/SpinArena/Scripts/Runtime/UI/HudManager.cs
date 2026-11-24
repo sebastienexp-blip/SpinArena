@@ -32,6 +32,11 @@ namespace SpinArena.UI
         sealed class Row { public RectTransform root; public RawImage avatar; public Text name; public Image bar; public Text level; }
         readonly List<Row> _rows = new List<Row>();
         Image _hintPanel;
+        Text _boardTitle, _announce, _taps;
+        CanvasGroup _announceGroup;
+        float _announceUntil;
+        readonly Queue<(string text, Color color)> _announceQueue = new Queue<(string, Color)>();
+        public bool TimerWarning { get; set; }
         RectTransform _tagsRoot, _legendRoot;
         sealed class Tag { public RectTransform root; public Image bg; public Text text; public string name; }
         readonly List<Tag> _tags = new List<Tag>();
@@ -83,6 +88,7 @@ namespace SpinArena.UI
             UiFactory.Label("Title", bar.transform, "<color=#5CE1FF>SPIN</color> ARENA", 50, TextAnchor.MiddleCenter, Color.white, top, top, new Vector2(0, -6), new Vector2(740, 60));
             _phase = UiFactory.Label("Phase", bar.transform, "", 28, TextAnchor.MiddleLeft, UiFactory.Accent, new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(26, 8), new Vector2(320, 40));
             _timer = UiFactory.Label("Timer", bar.transform, "", 30, TextAnchor.MiddleCenter, Color.white, bottom, bottom, new Vector2(0, 8), new Vector2(160, 40));
+            _taps = UiFactory.Label("Taps", bar.transform, "", 20, TextAnchor.UpperRight, new Color(1f, 0.6f, 0.75f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-18, -8), new Vector2(240, 30));
             _survivors = UiFactory.Label("Survivors", bar.transform, "", 28, TextAnchor.MiddleRight, UiFactory.Gold, new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-26, 8), new Vector2(320, 40));
 
             // Liste des joueurs (gauche).
@@ -123,6 +129,13 @@ namespace SpinArena.UI
             _bannerSub = UiFactory.Label("Sub", bannerRt, "", 40, TextAnchor.MiddleCenter, UiFactory.Gold, center, center, new Vector2(0, -70), new Vector2(1200, 60));
             _bannerGroup.alpha = 0f;
 
+            // Annonces moyennes (séries, primes, duel…), sous l'annonce des cadeaux.
+            var ann = UiFactory.Rect("Announce", root, top, top, top, new Vector2(0, -262), new Vector2(1000, 70));
+            _announceGroup = ann.gameObject.AddComponent<CanvasGroup>();
+            _announce = UiFactory.Label("Text", ann, "", 44, TextAnchor.MiddleCenter, Color.white, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(1000, 70));
+            _announce.fontStyle = FontStyle.Bold;
+            _announceGroup.alpha = 0f;
+
             // Carte d'entrée dans l'arène.
             var join = UiFactory.Panel("JoinCard", root, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0, 100), new Vector2(620, 120), new Color(0.05f, 0.1f, 0.25f, 0.92f));
             _joinCard = join.rectTransform;
@@ -136,7 +149,7 @@ namespace SpinArena.UI
             var board = UiFactory.Panel("Board", root, center, center, new Vector2(0, -40), new Vector2(620, 420), new Color(0.04f, 0.06f, 0.16f, 0.93f));
             _boardCard = board.rectTransform;
             _boardGroup = board.gameObject.AddComponent<CanvasGroup>();
-            UiFactory.Label("Title", board.transform, "CLASSEMENT", 40, TextAnchor.MiddleCenter, UiFactory.Gold, top, top, new Vector2(0, -12), new Vector2(600, 56));
+            _boardTitle = UiFactory.Label("Title", board.transform, "CLASSEMENT", 40, TextAnchor.MiddleCenter, UiFactory.Gold, top, top, new Vector2(0, -12), new Vector2(600, 56));
             _boardText = UiFactory.Label("Lines", board.transform, "", 30, TextAnchor.UpperLeft, Color.white, top, top, new Vector2(0, -80), new Vector2(560, 330));
             _boardGroup.alpha = 0f;
 
@@ -277,8 +290,10 @@ namespace SpinArena.UI
                     tag.root.localScale = Vector3.one * scale;
                     tag.root.anchoredPosition = local;
                     bool low = top.SpinFraction < 0.25f;
-                    tag.text.color = low ? new Color(1f, 0.55f, 0.5f) : Color.white;
-                    tag.bg.color = new Color(top.Glow.r * 0.25f, top.Glow.g * 0.25f, top.Glow.b * 0.3f, 0.78f);
+                    string shown = top.HasBounty ? n + "  PRIME" : n;
+                    if (tag.text.text != shown) { tag.text.text = shown; w = tag.text.preferredWidth + 22f; tag.root.sizeDelta = new Vector2(w, 40f); }
+                    tag.text.color = top.Crowned ? new Color(1f, 0.85f, 0.35f) : low ? new Color(1f, 0.55f, 0.5f) : Color.white;
+                    tag.bg.color = top.HasBounty ? new Color(0.6f, 0.05f, 0.08f, 0.85f) : top.Crowned ? new Color(0.35f, 0.25f, 0.02f, 0.85f) : new Color(top.Glow.r * 0.25f, top.Glow.g * 0.25f, top.Glow.b * 0.3f, 0.78f);
                 }
             }
             for (int i = used; i < _tags.Count; i++) if (_tags[i].root.gameObject.activeSelf) _tags[i].root.gameObject.SetActive(false);
@@ -316,8 +331,26 @@ namespace SpinArena.UI
             _joinQueue.Enqueue((name, avatar, top != null ? top.name + " · " + TopDefinition.RarityName(top.rarity) : "", Compat.Hex(top != null ? TopDefinition.RarityColor(top.rarity) : "#FFFFFF")));
         }
 
+        /// <summary>Annonce moyenne au centre (série d'éliminations, prime, duel final…).</summary>
+        public void Announce(string text, Color color)
+        {
+            if (_announceQueue.Count > 5) _announceQueue.Dequeue();
+            _announceQueue.Enqueue((text, color));
+        }
+
+        public void SetTaps(int total) => _taps.text = total > 0 ? "TAPOTEMENTS " + total.ToString("N0") : "";
+
+        /// <summary>Tableau central (classement du live) avec un titre et des lignes déjà mises en forme.</summary>
+        public void ShowBoard(string title, string lines, float seconds)
+        {
+            _boardTitle.text = title;
+            _boardText.text = lines;
+            _boardUntil = Time.unscaledTime + seconds;
+        }
+
         public void ShowLeaderboard(List<PlayerProfile> top)
         {
+            _boardTitle.text = "CLASSEMENT";
             var sb = new System.Text.StringBuilder();
             for (int i = 0; i < top.Count; i++)
             {
@@ -380,6 +413,18 @@ namespace SpinArena.UI
 
             _winnerGroup.alpha = Mathf.MoveTowards(_winnerGroup.alpha, _winnerVisible ? 1f : 0f, dt * 3f);
             _winnerCard.localScale = Vector3.one * Mathf.Lerp(_winnerCard.localScale.x, _winnerVisible ? 1f : 0.8f, 1f - Mathf.Exp(-dt * 8f));
+
+            if (t > _announceUntil && _announceQueue.Count > 0)
+            {
+                var a = _announceQueue.Dequeue();
+                _announce.text = a.text;
+                _announce.color = a.color;
+                _announceUntil = t + (_announceQueue.Count > 1 ? 1.4f : 2.4f);
+                _announce.rectTransform.localScale = Vector3.one * 1.4f;
+            }
+            _announceGroup.alpha = Mathf.MoveTowards(_announceGroup.alpha, t < _announceUntil ? 1f : 0f, dt * 4f);
+            _announce.rectTransform.localScale = Vector3.one * Mathf.Lerp(_announce.rectTransform.localScale.x, 1f, 1f - Mathf.Exp(-dt * 9f));
+            _timer.color = TimerWarning && Mathf.Repeat(t, 1f) < 0.5f ? new Color(1f, 0.35f, 0.3f) : Color.white;
 
             if (t > _giftUntil && _giftQueue.Count > 0)
             {

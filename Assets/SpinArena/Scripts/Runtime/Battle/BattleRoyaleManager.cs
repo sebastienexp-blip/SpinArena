@@ -21,6 +21,9 @@ namespace SpinArena.Battle
     public sealed class BattleRoyaleManager : MonoBehaviour
     {
         public BattleRound Round { get; private set; }
+        /// <summary>Lignes supplémentaires pour la carte du vainqueur (fournies par la mise en scène).</summary>
+        public System.Func<string, string> WinnerExtra;
+        public event System.Action<List<(Core.Players.PlayerProfile player, Core.Progression.RewardOutcome outcome, Participant part)>> Rewarded;
         public IReadOnlyDictionary<string, TopController> Tops => _tops;
 
         ArenaManager _arena;
@@ -246,9 +249,10 @@ namespace SpinArena.Battle
                     ? res.part.eliminations + " élimination(s) · +" + res.outcome.xpGained + " XP · +" + res.outcome.coinsGained + " éclats"
                       + (res.outcome.levelsGained > 0 ? "\n<color=#FFD54A>Niveau " + res.outcome.newLevel + " !</color>" : "")
                     : "";
-                _hud.ShowWinner(w.DisplayName, _hud.AvatarOf(winnerId), w.Def.name + " · " + details);
+                _hud.ShowWinner(w.DisplayName, _hud.AvatarOf(winnerId), w.Def.name + " · " + details + (WinnerExtra?.Invoke(winnerId) ?? ""));
             }
             else _hud.Banner("ÉGALITÉ", "Aucun survivant !", 3f);
+            Rewarded?.Invoke(results);
         }
 
         public TopController TopOf(string playerId) => playerId != null && _tops.TryGetValue(playerId, out var t) ? t : null;

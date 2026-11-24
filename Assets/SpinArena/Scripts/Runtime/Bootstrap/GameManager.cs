@@ -32,6 +32,8 @@ namespace SpinArena
         public ChatCommandManager Commands { get; private set; }
         public GiftManager Gifts { get; private set; }
         public TapManager Taps { get; private set; }
+        public ShowManager Show { get; private set; }
+        public ArenaHazards Hazards { get; private set; }
         public float Fps { get; private set; }
 
         const string PrefConnector = "spin.connector";
@@ -79,6 +81,10 @@ namespace SpinArena
             Battle.Init(Arena, Players, Config, Hud);
             Abilities = Child<AbilityManager>("Abilities");
             Abilities.Init(Battle, Config.effects);
+            Show = Child<ShowManager>("Show");
+            Show.Init(Battle, Players, Hud, Config);
+            Hazards = Child<ArenaHazards>("Hazards");
+            Hazards.Init(Battle, Arena, Abilities, Config);
             Commands = new ChatCommandManager(Battle, Players, Config.commands);
             Taps = new TapManager(Battle, Abilities, Players, Config.effects);
             Gifts = new GiftManager(Config.gifts, Battle, Abilities, Players, Hud);
@@ -117,6 +123,9 @@ namespace SpinArena
             {
                 case LiveEventType.Chat: Commands.OnChat(e, Now); break;
                 case LiveEventType.Gift: Gifts.OnGift(e, Now); break;
+                case LiveEventType.Follow:
+                    if (Config.live.followJoins && Battle.TopOf(e.user.Key) == null) Battle.Join(e.user);
+                    break;
                 case LiveEventType.Like:
                     int n = Mathf.Max(1, e.likeCount);
                     _likes += n;
@@ -139,6 +148,7 @@ namespace SpinArena
             if (_statusTimer <= 0f)
             {
                 _statusTimer = 1f;
+                Hud.SetTaps(_likes);
                 Hud.SetStatus(Live.StatusText + "  ·  " + Mathf.RoundToInt(Fps) + " i/s  ·  " + Players.Registry.Count + " joueurs", Live.IsDemo);
             }
         }
