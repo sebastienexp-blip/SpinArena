@@ -48,6 +48,7 @@ namespace SpinArena.Battle
             Round.ParticipantJoined += OnJoined;
             Round.ParticipantEliminated += OnEliminated;
             Round.WinnerDecided += OnWinner;
+            Round.ParticipantRevived += OnRevived;
             Round.SuddenDeathStarted += () => { _hud.Banner("MORT SUBITE", "Les toupies s'épuisent 4× plus vite !", 3f, new Color(1f, 0.35f, 0.3f)); CameraDirector.Instance.Shake(0.3f); };
             Round.StandingProvider = () => _tops.Values.Where(t => t.Alive).OrderByDescending(t => t.SpinFraction).ThenByDescending(t => t.DamageDealt).Select(t => t.PlayerId);
             Round.KeepForNextRound = id => _players.IsActive(id, cfg.live.inactivityMinutes);
@@ -253,6 +254,26 @@ namespace SpinArena.Battle
             }
             else _hud.Banner("ÉGALITÉ", "Aucun survivant !", 3f);
             Rewarded?.Invoke(results);
+        }
+
+        public bool Revive(string playerId) => Round.Revive(playerId);
+
+        /// <summary>Retour en jeu : la toupie retombe au bord de l'arène avec une partie de son énergie.</summary>
+        void OnRevived(Participant part)
+        {
+            var p = _players.Registry.Get(part.playerId);
+            var def = _players.Catalog.Get(p?.selectedTopId) ?? _players.Catalog.StarterFor(part.playerId);
+            if (!_tops.TryGetValue(part.playerId, out var top)) { top = _pool.Count > 0 ? _pool.Pop() : CreateTop(); _tops[part.playerId] = top; RebuildActive(); }
+            top.Setup(_arena, part.playerId, p?.DisplayName ?? part.playerId, def, p?.level ?? 1, null);
+            Texture photo = _hud.AvatarOf(part.playerId);
+            if (photo != AvatarCache.Instance.Generated(part.playerId)) top.SetPhoto(photo);
+            float a = Random.value * 360f, r = _arena.Radius * 0.5f;
+            var pos = new Vector3(Mathf.Cos(a * Mathf.Deg2Rad) * r, _arena.SurfaceHeight(r) + 0.4f, Mathf.Sin(a * Mathf.Deg2Rad) * r);
+            top.Stage(pos);
+            top.Launch(6f);
+            top.SetSpinFraction(_cfg.effects.reviveEnergy);
+            VfxManager.Instance.JoinBeam(pos, top.Glow);
+            _hud.Announce("RETOUR DE " + top.DisplayName + " !", new Color(0.5f, 1f, 0.6f));
         }
 
         public TopController TopOf(string playerId) => playerId != null && _tops.TryGetValue(playerId, out var t) ? t : null;

@@ -145,7 +145,7 @@ namespace SpinArena
                 "Connecteur : " + _gm.Live.Name + " — " + _gm.Live.StatusText + "\n" +
                 "Images/s : " + Mathf.RoundToInt(_gm.Fps) + " · joueurs enregistrés : " + _gm.Players.Registry.Count + "\n" +
                 "!join acceptés : " + _gm.Commands.Accepted + " · refusés (anti-abus) : " + _gm.Commands.Rejected + "\n" +
-                "Dons reçus : " + _gm.Gifts.Processor.Received + " · exécutés : " + _gm.Gifts.Executed + " · en attente : " + _gm.Gifts.Processor.PendingCount + " · doublons : " + _gm.Gifts.Processor.Duplicates + "\n" +
+                "Dons reçus : " + _gm.Gifts.Processor.Received + " · exécutés : " + _gm.Gifts.Executed + " (sa toupie " + _gm.Gifts.Personal + ", une autre " + _gm.Gifts.ForOthers + ", retours " + _gm.Gifts.Revives + ", pour tous " + _gm.Gifts.Collective + ")" + " · en attente : " + _gm.Gifts.Processor.PendingCount + " · doublons : " + _gm.Gifts.Processor.Duplicates + "\n" +
                 "Tapotements : " + _gm.Likes + " · paliers donnés : " + _gm.Taps.Boosts + " · photos de profil : " + AvatarCache.Instance.Downloaded + " (échecs " + AvatarCache.Instance.Failed + ")" +
                 (_gm.Players.LastSaveError != null ? "\nSauvegarde : " + _gm.Players.LastSaveError : ""), 330);
             Header("Commandes de la partie");
@@ -238,6 +238,9 @@ namespace SpinArena
             Toggle("Cadeaux activés", () => fx.giftsEnabled, v => fx.giftsEnabled = v);
             Toggle("Un cadeau fait entrer le spectateur dans l'arène", () => fx.giftJoins, v => fx.giftJoins = v);
             Toggle("Événements d'arène (météores, tornade)", () => fx.arenaEvents, v => fx.arenaEvents = v);
+            Toggle("Un cadeau fait revenir un joueur éliminé (1 fois par manche)", () => fx.giftRevive, v => fx.giftRevive = v);
+            Stepper("Valeur minimum pour revenir", () => fx.reviveMinDiamonds, v => fx.reviveMinDiamonds = (int)v, 1, 100, 1, v => v.ToString("0") + " pièce(s)");
+            Stepper("Énergie au retour", () => fx.reviveEnergy, v => fx.reviveEnergy = v, 0.2f, 1f, 0.1f, Pct);
             Stepper("Intensité des actions", () => fx.giftIntensity, v => fx.giftIntensity = v, 0.5f, 3f, 0.25f, Pct);
             Header("Limites anti-abus");
             Stepper("Actions maximum par seconde", () => g.maxActivationsPerSecond, v => g.maxActivationsPerSecond = v, 1, 10, 1, F0);

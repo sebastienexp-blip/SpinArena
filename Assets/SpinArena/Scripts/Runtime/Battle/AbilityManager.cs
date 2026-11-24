@@ -148,7 +148,7 @@ namespace SpinArena.Battle
         public bool FreezeNearest(TopController t, float seconds)
         {
             if (!Ok(t)) return false;
-            var o = Nearest(t, 1, 14f).FirstOrDefault();
+            var o = Nearest(t, 1, 60f).FirstOrDefault();
             if (o == null) return false;
             o.Body.SetVelocity(Vector3.zero);
             o.Slow(seconds);
@@ -161,7 +161,7 @@ namespace SpinArena.Battle
         public bool Kick(TopController t, float power)
         {
             if (!Ok(t)) return false;
-            var o = Nearest(t, 1, 10f).FirstOrDefault();
+            var o = Nearest(t, 1, 60f).FirstOrDefault();
             if (o == null) return false;
             Vector3 d = (o.transform.position - t.transform.position).Flat().normalized;
             o.Push((d + Vector3.up * 0.2f) * 7f * power * o.Body.mass);
@@ -234,7 +234,7 @@ namespace SpinArena.Battle
         public bool Barrage(TopController t, int shots)
         {
             if (!Ok(t)) return false;
-            var targets = Nearest(t, shots, 16f).ToList();
+            var targets = Nearest(t, shots, 60f).ToList();
             if (targets.Count == 0) return false;
             foreach (var o in targets)
             {

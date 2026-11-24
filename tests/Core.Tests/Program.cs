@@ -45,6 +45,7 @@ static class Program
         Test("progression", Progression);
         Test("cadeaux-images-actions", GiftWiring);
         Test("déblocages-séries-primes", Unlocks);
+        Test("retour-en-jeu", Revive);
 
         Console.WriteLine($"Tests du noyau : {_pass} réussis, {_fail} échoués");
         foreach (var f in Failures) Console.WriteLine("  ÉCHEC : " + f);
@@ -345,6 +346,20 @@ static class Program
         var b2 = new PlayerProfile { id = "b2" };
         var ob2 = ProgressionRules.Apply(b2, new RoundResult { placement = 5, participants = 10 }, rs);
         Check(ob.xpGained - ob2.xpGained == rs.xpBounty && b.bountiesClaimed == 1, "prime : XP bonus");
+    }
+
+    static void Revive()
+    {
+        var r = NewRound(3, out _);
+        Check(!r.Revive("p0"), "pas de retour hors combat");
+        r.Tick(5.01f); r.Tick(3.01f);
+        Check(!r.Revive("p0"), "pas de retour pour un joueur vivant");
+        r.Eliminate("p1", EliminationReason.RingOut, "p0");
+        Check(r.Revive("p1") && r.Get("p1").alive && r.AliveCount == 3, "retour en jeu");
+        r.Eliminate("p1", EliminationReason.RingOut);
+        Check(!r.Revive("p1"), "une seule fois par manche");
+        r.Eliminate("p2", EliminationReason.OutOfSpin);
+        Check(r.Phase == RoundPhase.Victory && r.WinnerId == "p0" && r.Get("p1").placement == 3, "classement après un retour");
     }
 
     static string FindRoot()

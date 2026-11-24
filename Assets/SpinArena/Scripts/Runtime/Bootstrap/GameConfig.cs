@@ -56,6 +56,10 @@ namespace SpinArena
         public float giftIntensity = 1f;
         public bool arenaEvents = true;
         public bool tapsEnabled = true;
+        /// <summary>Un joueur éliminé revient dans l'arène s'il envoie un cadeau d'au moins N pièces (1 fois par manche).</summary>
+        public bool giftRevive = true;
+        public int reviveMinDiamonds = 5;
+        public float reviveEnergy = 0.5f;
         /// <summary>Tapotements : un palier tous les N tapotements d'un même spectateur.</summary>
         public int tapsPerBoost = 15;
         public float tapGrowth = 0.01f;       // +1 % de taille par palier (plafond : tuning.maxSize)

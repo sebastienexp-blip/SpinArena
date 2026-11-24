@@ -24,6 +24,11 @@ namespace SpinArena.Live
         readonly System.Random _rng = new System.Random();
         public GiftProcessor Processor => _proc;
         public int Executed { get; private set; }
+        /// <summary>Statistiques : action sur la toupie du donateur, sur une autre toupie, retour en jeu, énergie pour tous.</summary>
+        public int Personal { get; private set; }
+        public int ForOthers { get; private set; }
+        public int Revives { get; private set; }
+        public int Collective { get; private set; }
 
         public GiftManager(GiftSettings settings, BattleRoyaleManager br, AbilityManager abilities, PlayerManager players, HudManager hud)
         {
@@ -60,16 +65,41 @@ namespace SpinArena.Live
             var fx = GameConfig.Current.effects;
             int n = Mathf.Clamp(Mathf.RoundToInt(a.count * fx.giftIntensity), 1, 10);
             if (!fx.arenaEvents && (effect == "meteor_storm" || effect == "tornado")) effect = "super_heal";
+            Texture icon = GiftIcons.Get(a.ruleName ?? a.giftName) ?? GiftIcons.Get(a.giftName);
+            bool arenaEvent = effect == "meteor_storm" || effect == "tornado";
+            string forWhom = null;
+            if (!arenaEvent && !Ok(t))
+            {
+                // Toupie éliminée : un cadeau d'au moins quelques pièces la fait revenir dans l'arène (une fois par manche).
+                if (fx.giftRevive && a.diamonds >= fx.reviveMinDiamonds && _br.Revive(a.userId))
+                {
+                    Revives++;
+                    GameManager.Instance?.Show?.OnGiftActivated(a.userId, a.userName);
+                    Audio.AudioManager.Play("join", 1f, 0.1f);
+                    _hud.GiftPopup(a.userName, icon, "RETOUR DANS L'ARÈNE !");
+                    return;
+                }
+                // Sinon, l'action du cadeau va à une toupie encore en lice, choisie au hasard.
+                var alive = new List<TopController>(_br.Fighting());
+                if (alive.Count > 0)
+                {
+                    t = alive[_rng.Next(alive.Count)];
+                    forWhom = t.DisplayName;
+                }
+            }
             string label = Run(effect, t, n);
             if (label == null)
             {
-                // Toupie absente ou déjà éliminée : l'énergie profite à toutes les toupies en lice.
+                // Rien n'a pu s'appliquer (aucune toupie en lice) : énergie pour tout le monde.
                 _ab.CollectiveBoost(n);
                 label = "énergie pour toutes les toupies";
+                Collective++;
             }
+            else if (forWhom != null) { label += " pour " + forWhom; ForOthers++; }
+            else Personal++;
             GameManager.Instance?.Show?.OnGiftActivated(a.userId, a.userName);
             Audio.AudioManager.Play("gift", 0.8f, 0.15f);
-            _hud.GiftPopup(a.userName, GiftIcons.Get(a.ruleName ?? a.giftName) ?? GiftIcons.Get(a.giftName), (n > 1 ? "×" + n + "  " : "") + label);
+            _hud.GiftPopup(a.userName, icon, (n > 1 ? "×" + n + "  " : "") + label);
         }
 
         /// <summary>Lance l'action ; renvoie le texte affiché, ou null si elle n'a pas pu s'appliquer.</summary>

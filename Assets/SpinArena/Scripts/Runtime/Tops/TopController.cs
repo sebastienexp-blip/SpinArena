@@ -352,6 +352,8 @@ namespace SpinArena.Tops
             if (!string.IsNullOrEmpty(attackerId)) { _lastAttacker = attackerId; _lastHitTime = Time.time; }
         }
 
+        public void SetSpinFraction(float f) => Spin = MaxSpin * Mathf.Clamp01(f);
+
         public void AddSpin(float amount)
         {
             if (!Alive) return;

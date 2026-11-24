@@ -47,6 +47,7 @@ namespace SpinArena.Core.Battle
         public string eliminatedBy;
         /// <summary>Primes remportées pendant la manche (le moteur l'incrémente).</summary>
         public int bounties;
+        public int revives;
     }
 
     /// <summary>
@@ -74,6 +75,7 @@ namespace SpinArena.Core.Battle
         public event Action<Participant> ParticipantEliminated;
         public event Action<string> WinnerDecided;   // null = égalité (tous éliminés en même temps)
         public event Action SuddenDeathStarted;
+        public event Action<Participant> ParticipantRevived;
 
         public BattleRound(RoundSettings settings) { Settings = settings ?? new RoundSettings(); }
 
@@ -139,6 +141,23 @@ namespace SpinArena.Core.Battle
             }
             ParticipantEliminated?.Invoke(p);
             CheckForWinner();
+            return true;
+        }
+
+        /// <summary>
+        /// Retour en jeu d'un joueur éliminé (cadeau). Une seule fois par manche et par joueur, pas pendant la mort subite.
+        /// </summary>
+        public bool Revive(string playerId, int maxRevives = 1)
+        {
+            if (Phase != RoundPhase.Fighting || SuddenDeath) return false;
+            var p = Get(playerId);
+            if (p == null || p.alive || p.revives >= maxRevives) return false;
+            p.alive = true;
+            p.revives++;
+            p.placement = 0;
+            p.reason = null;
+            p.eliminatedBy = null;
+            ParticipantRevived?.Invoke(p);
             return true;
         }
 

@@ -122,6 +122,7 @@ namespace SpinArena
             sb.AppendLine("- Images/s : moyenne " + (_fpsSamples > 0 ? (_fpsSum / _fpsSamples).ToString("0") : "?") + ", minimum " + _fpsMin.ToString("0"));
             sb.AppendLine("- Commandes acceptées : " + gm.Commands.Accepted + " · refusées : " + gm.Commands.Rejected);
             sb.AppendLine("- Dons simulés reçus : " + gm.Gifts.Processor.Received + " · exécutés : " + gm.Gifts.Executed + " · doublons : " + gm.Gifts.Processor.Duplicates);
+            sb.AppendLine("- Actions : sur la toupie du donateur " + gm.Gifts.Personal + " · sur une autre toupie " + gm.Gifts.ForOthers + " · retours en jeu " + gm.Gifts.Revives + " · énergie pour tous " + gm.Gifts.Collective);
             sb.AppendLine("- Erreurs : " + _errors);
             sb.AppendLine();
             foreach (var l in _lines) sb.AppendLine("    " + l);

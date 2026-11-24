@@ -109,6 +109,14 @@ namespace SpinArena
             Live = kind == "demo"
                 ? new DemoLiveConnector(Config.live.demoSpectators, () => Battle.Round.Phase)
                 : (ILiveConnector)new BridgeLiveConnector(Config.live.bridgeUrl);
+            if (Live is DemoLiveConnector demo) demo.AlivePicker = () =>
+            {
+                var alive = new System.Collections.Generic.List<Tops.TopController>(Battle.Fighting());
+                if (alive.Count == 0) return null;
+                var t = alive[UnityEngine.Random.Range(0, alive.Count)];
+                var p = Players.Registry.Get(t.PlayerId);
+                return new LiveUser { userId = t.PlayerId, uniqueId = p?.uniqueId, nickname = t.DisplayName };
+            };
             Live.EventReceived += OnLiveEvent;
             Live.Connect();
             PlayerPrefs.SetString(PrefConnector, kind == "demo" ? "demo" : "bridge");

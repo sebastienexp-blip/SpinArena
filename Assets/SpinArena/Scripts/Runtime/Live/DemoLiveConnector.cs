@@ -45,6 +45,9 @@ namespace SpinArena.Live
             }
         }
 
+        /// <summary>Fournit un joueur encore en lice (pour simuler des cadeaux réalistes).</summary>
+        public Func<LiveUser> AlivePicker;
+
         public string Name => "Démonstration";
         public bool IsDemo => true;
         public bool IsConnected => _running;
@@ -79,7 +82,8 @@ namespace SpinArena.Live
             }
             if (now >= _nextGift && phase == RoundPhase.Fighting)
             {
-                var u = Pick();
+                // Comme en vrai : surtout des joueurs encore en lice, mais aussi des éliminés et des spectateurs.
+                var u = AlivePicker != null && _rng.Next(10) < 7 ? AlivePicker() ?? Pick() : Pick();
                 int r = _rng.Next(100);
                 var g = r < 75 ? Small[_rng.Next(Small.Length)] : r < 93 ? Medium[_rng.Next(Medium.Length)] : r < 99 ? Big[_rng.Next(Big.Length)] : Huge[_rng.Next(Huge.Length)];
                 string gift = g.name; int diamonds = g.value;
