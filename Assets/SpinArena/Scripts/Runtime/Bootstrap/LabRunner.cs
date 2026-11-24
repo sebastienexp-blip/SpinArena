@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using SpinArena.Core.Battle;
 using UnityEngine;
@@ -22,7 +23,7 @@ namespace SpinArena
         readonly List<string> _lines = new List<string>();
         readonly List<float> _fightDurations = new List<float>();
         float _fightStart;
-        bool _done, _tornadoDone, _tornadoShot;
+        bool _done, _tornadoDone, _tornadoShot, _reviveDone, _reviveShot;
 
         public static bool Requested
         {
@@ -100,8 +101,21 @@ namespace SpinArena
                 float ft = Time.time - _fightStart;
                 if (!_tornadoDone && ft > 20f) { _tornadoDone = true; GameManager.Instance.Abilities.Tornado(); Log("Tornade déclenchée"); }
                 if (_tornadoDone && !_tornadoShot && ft > 22.5f) { _tornadoShot = true; Shot("tornade"); }
+                // Essai du retour en jeu : un joueur éliminé envoie un Doughnut.
+                if (!_reviveDone && ft > 30f)
+                {
+                    var out_ = round.Participants.FirstOrDefault(p => !p.alive);
+                    if (out_ != null)
+                    {
+                        _reviveDone = true;
+                        var prof = GameManager.Instance.Players.Registry.Get(out_.playerId);
+                        GameManager.Instance.Gifts.OnGift(new Core.Live.LiveEvent { type = Core.Live.LiveEventType.Gift, msgId = "lab-revive" + round.RoundNumber, user = new Core.Live.LiveUser { userId = out_.playerId, nickname = prof?.nickname }, giftName = "Doughnut", diamondCount = 30, repeatCount = 1, repeatEnd = true }, Time.realtimeSinceStartupAsDouble);
+                        Log("Cadeau d'un joueur éliminé (" + prof?.nickname + ")");
+                    }
+                }
+                if (_reviveDone && !_reviveShot && ft > 33f) { _reviveShot = true; Shot("retour"); Log("Joueur revenu en jeu : " + (round.Participants.Any(p => p.revives > 0 && p.alive) ? "oui" : "non")); }
             }
-            else if (round.Phase == RoundPhase.Lobby) { _tornadoDone = false; _tornadoShot = false; }
+            else if (round.Phase == RoundPhase.Lobby) { _tornadoDone = false; _tornadoShot = false; _reviveDone = false; _reviveShot = false; }
             if (_roundsDone >= _targetRounds || t > _maxSeconds) Finish();
         }
 
