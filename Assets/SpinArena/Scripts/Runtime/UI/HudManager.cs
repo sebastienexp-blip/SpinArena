@@ -93,14 +93,34 @@ namespace SpinArena.UI
             _tags.Clear();
             _hudRoot = UiFactory.Rect("Live", Canvas.transform, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
             _hudRoot.SetAsFirstSibling();
+            _safe = default;
+            ApplySafeArea();
             Build(_hudRoot);
+        }
+
+        Rect _safe;
+        /// <summary>
+        /// Garde l'interface dans la zone sûre de l'écran (hors trou de la caméra et coins arrondis),
+        /// avec une petite marge en plus pour que rien ne touche les bords.
+        /// </summary>
+        bool ApplySafeArea()
+        {
+            Rect sa = Screen.safeArea;
+            if (sa == _safe || Screen.width <= 0 || Screen.height <= 0) return false;
+            _safe = sa;
+            float m = Mathf.Min(Screen.width, Screen.height) * 0.012f;
+            _hudRoot.anchorMin = new Vector2((sa.xMin + m) / Screen.width, (sa.yMin + m) / Screen.height);
+            _hudRoot.anchorMax = new Vector2((sa.xMax - m) / Screen.width, (sa.yMax - m) / Screen.height);
+            _hudRoot.offsetMin = _hudRoot.offsetMax = Vector2.zero;
+            return true;
         }
 
         void Build(Transform root)
         {
             Vector2 top = new Vector2(0.5f, 1f), tl = new Vector2(0f, 1f), tr = new Vector2(1f, 1f), bottom = new Vector2(0.5f, 0f), center = new Vector2(0.5f, 0.5f);
             bool P = _portrait;
-            float W = P ? 1080f : 1920f;
+            // Largeur utile réelle (zone sûre comprise) : en portrait le canevas fait 1080 de large.
+            float W = P ? 1080f * (_hudRoot.anchorMax.x - _hudRoot.anchorMin.x) : 1920f;
 
             // Pseudos des toupies (sous tous les panneaux).
             _tagsRoot = UiFactory.Rect("NameTags", root, Vector2.zero, Vector2.one, center, Vector2.zero, Vector2.zero);
@@ -444,6 +464,7 @@ namespace SpinArena.UI
             // L'écran a tourné (option ou rotation du téléphone) : l'interface se réorganise.
             bool portraitNow = Screen.height > Screen.width;
             if (portraitNow != _portrait) BuildLayout(portraitNow);
+            else if (ApplySafeArea()) BuildLayout(_portrait);
             _listRoot.gameObject.SetActive(disp.showPlayerList);
             _legendRoot.gameObject.SetActive(disp.showGiftLegend);
             _hintPanel.gameObject.SetActive(disp.showHint);
