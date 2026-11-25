@@ -38,8 +38,8 @@ jobs:
           $rounds = "${{ inputs.rounds }}"; if (-not $rounds) { $rounds = "3" }
           $players = "${{ inputs.players }}"; if (-not $players) { $players = "50" }
           $exe = Join-Path $env:GITHUB_WORKSPACE "game\SpinArena.exe"
-          # Le bureau du serveur d'essai est petit : en portrait, fenêtre 405×720 (même proportion qu'un téléphone).
-          $w = "1920"; $h = "1080"; if ("${{ inputs.orientation }}" -eq "portrait") { $w = "405"; $h = "720" }
+          # Le bureau du serveur d'essai est petit : en portrait, fenêtre 336×720 (même proportion qu'un S23 Ultra, 1080×2316).
+          $w = "1920"; $h = "1080"; if ("${{ inputs.orientation }}" -eq "portrait") { $w = "336"; $h = "720" }
           $argsList = @("-spinlab", "-labrounds", $rounds, "-labplayers", $players, "-labseconds", "1500", "-labout", "`"$out`"", "-screen-fullscreen", "0", "-screen-width", $w, "-screen-height", $h, "-logFile", "`"$out\player.log`"")
           $p = Start-Process -FilePath $exe -ArgumentList $argsList -PassThru
           if (-not $p.WaitForExit(1800000)) { Write-Host "Délai dépassé"; $p.Kill() }

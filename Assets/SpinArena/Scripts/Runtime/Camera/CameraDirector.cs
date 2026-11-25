@@ -83,8 +83,8 @@ namespace SpinArena.CameraRig
         public static float BaseFov(float aspect)
         {
             if (aspect >= 1f) return 45f;
-            float v = 2f * Mathf.Atan(Mathf.Tan(25f * Mathf.Deg2Rad) / Mathf.Max(0.3f, aspect)) * Mathf.Rad2Deg;
-            return Mathf.Clamp(v, 45f, 90f);
+            float v = 2f * Mathf.Atan(Mathf.Tan(27f * Mathf.Deg2Rad) / Mathf.Max(0.3f, aspect)) * Mathf.Rad2Deg;
+            return Mathf.Clamp(v, 45f, 95f);
         }
 
         void LateUpdate()

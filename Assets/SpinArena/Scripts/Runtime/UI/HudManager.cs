@@ -85,6 +85,9 @@ namespace SpinArena.UI
         {
             _portrait = portrait;
             _scaler.referenceResolution = portrait ? new Vector2(1080, 1920) : new Vector2(1920, 1080);
+            // Les téléphones récents sont plus allongés que 16:9 (S23 Ultra : 1080×2316). On cale l'interface sur
+            // la largeur en portrait et sur la hauteur en paysage : rien n'est coupé sur les bords.
+            _scaler.matchWidthOrHeight = portrait ? 0f : 1f;
             if (_hudRoot != null) Destroy(_hudRoot.gameObject);
             _rows.Clear();
             _tags.Clear();
