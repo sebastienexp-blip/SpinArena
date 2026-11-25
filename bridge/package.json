@@ -1,6 +1,6 @@
 {
   "name": "spin-arena-bridge",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Pont TikTok LIVE → SPIN ARENA (Termux). Lit le chat et les cadeaux du live et les transmet au jeu par WebSocket local.",
   "type": "module",
   "main": "spin-bridge.mjs",

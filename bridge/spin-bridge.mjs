@@ -14,7 +14,7 @@ import path from 'node:path';
 import { WebSocketServer } from 'ws';
 import { normalizeChat, normalizeGift, normalizeLike, normalizeSimple, dedupKey } from './normalize.mjs';
 
-const VERSION = '0.1.0';
+const VERSION = '0.1.1';
 const CONFIG_PATH = path.join(os.homedir(), '.spin-bridge.json');
 const args = process.argv.slice(2);
 const testMode = args.includes('--test');
@@ -106,7 +106,9 @@ async function startTikTok() {
   const E = m.WebcastEvent ?? lib.WebcastEvent ?? {};
   const C = m.ControlEvent ?? lib.ControlEvent ?? {};
   const ev = (name, legacy) => E[name] ?? legacy;
-  const options = { processInitialData: false, enableExtendedGiftInfo: true, fetchRoomInfoOnConnect: true };
+  // enableExtendedGiftInfo reste désactivé : la liste des cadeaux passe par un service de signature payant
+  // (offre « Business » d'Euler Stream). Les événements cadeaux contiennent déjà le nom, la valeur et l'image.
+  const options = { processInitialData: false, enableExtendedGiftInfo: false, fetchRoomInfoOnConnect: true };
   if (config.signApiKey) options.signApiKey = config.signApiKey;
 
   log(`SPIN ARENA pont v${VERSION} — live @${config.username} — jeu sur ws://127.0.0.1:${config.port}`);
