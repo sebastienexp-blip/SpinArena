@@ -101,6 +101,8 @@ namespace SpinArena
         public float nameSize = 1f;          // taille des pseudos (0.6 .. 1.6)
         /// <summary>Pseudos affichés au maximum (les toupies les plus en forme d'abord) ; 0 = tous.</summary>
         public int maxNameTags = 60;
+        /// <summary>Sens de l'écran : 1 = portrait (vertical, pour les jeux TikTok en vertical), 0 = paysage.</summary>
+        public int orientation = 1;
         /// <summary>Au-delà de ce nombre de toupies, les effets coûteux (traînées, flou, ombres) sont coupés.</summary>
         public int detailLimit = 90;
         public bool showJoinCards = true;

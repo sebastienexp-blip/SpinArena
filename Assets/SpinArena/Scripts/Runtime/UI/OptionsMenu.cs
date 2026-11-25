@@ -99,6 +99,10 @@ namespace SpinArena
         void Update()
         {
             if (_panel == null || !_panel.activeSelf) return;
+            // En portrait, le panneau (conçu pour 1760×1000) est réduit pour tenir dans la largeur de l'écran.
+            var area = ((RectTransform)_gm.Hud.Canvas.transform).rect;
+            float k = Mathf.Min(1f, (area.width - 30f) / 1760f, (area.height - 30f) / 1000f);
+            _panel.transform.localScale = Vector3.one * k;
             _refreshTimer -= Time.unscaledDeltaTime;
             if (_refreshTimer <= 0f)
             {
@@ -282,13 +286,14 @@ namespace SpinArena
         {
             var d = C.display;
             Header("À l'écran");
+            Choice("Sens de l'écran", new[] { "Paysage (horizontal)", "Portrait (vertical)" }, () => d.orientation == 0 ? 0 : 1, i => { d.orientation = i; _gm.ApplyOrientation(); });
             Toggle("Pseudos au-dessus des toupies", () => d.showNames, v => d.showNames = v);
             Stepper("Taille des pseudos", () => d.nameSize, v => d.nameSize = v, 0.6f, 1.6f, 0.1f, Pct);
             Stepper("Pseudos affichés au maximum", () => d.maxNameTags, v => d.maxNameTags = (int)v, 0, 300, 10, v => v <= 0 ? "tous" : v.ToString("0"));
             Stepper("Effets allégés au-delà de", () => d.detailLimit, v => d.detailLimit = (int)v, 20, 400, 10, v => v.ToString("0") + " toupies");
-            Toggle("Liste des cadeaux et interactions (droite)", () => d.showGiftLegend, v => d.showGiftLegend = v);
+            Toggle("Liste des cadeaux et interactions", () => d.showGiftLegend, v => d.showGiftLegend = v);
             Toggle("Photos de profil sur les toupies", () => d.showPhotos, v => d.showPhotos = v);
-            Toggle("Liste des joueurs (gauche)", () => d.showPlayerList, v => d.showPlayerList = v);
+            Toggle("Liste des joueurs", () => d.showPlayerList, v => d.showPlayerList = v);
             Toggle("Annonces des cadeaux", () => d.showGiftPopups, v => d.showGiftPopups = v);
             Toggle("Cartes d'arrivée des joueurs", () => d.showJoinCards, v => d.showJoinCards = v);
             Toggle("Grandes annonces (manche, compte à rebours…)", () => d.showBanners, v => d.showBanners = v);

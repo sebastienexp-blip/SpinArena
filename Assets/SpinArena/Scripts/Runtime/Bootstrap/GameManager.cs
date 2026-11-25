@@ -56,7 +56,6 @@ namespace SpinArena
             Application.targetFrameRate = 60;
             QualitySettings.vSyncCount = 0;
             Screen.sleepTimeout = SleepTimeout.NeverSleep;
-            Screen.orientation = ScreenOrientation.LandscapeLeft;
             Application.runInBackground = true;
             Time.fixedDeltaTime = 1f / 60f;
             Physics.defaultSolverIterations = 8;
@@ -64,6 +63,7 @@ namespace SpinArena
             Application.logMessageReceived += OnLog;
 
             Config = GameConfig.Load();
+            ApplyOrientation();
             Catalog = TopCatalog.CreateDefault();
 
             Arena = Child<ArenaManager>("Arena");
@@ -208,6 +208,12 @@ namespace SpinArena
             // Ombres coupées quand il y a des centaines de toupies (le téléphone garde des images fluides).
             if (Arena.KeyLight != null) Arena.KeyLight.shadows = d.shadows && !Tops.TopController.LowDetail ? LightShadows.Soft : LightShadows.None;
             RenderingSetup.ApplyQuality(d.bloom, d.renderScale);
+        }
+
+        /// <summary>Tourne l'écran selon l'option (portrait ou paysage). L'interface et la caméra suivent d'elles-mêmes.</summary>
+        public void ApplyOrientation()
+        {
+            Screen.orientation = Config.display.orientation == 0 ? ScreenOrientation.LandscapeLeft : ScreenOrientation.Portrait;
         }
 
         public void SetPaused(bool paused)

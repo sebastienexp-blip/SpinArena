@@ -245,7 +245,7 @@ namespace SpinArena.EditorTools
             PlayerSettings.defaultInterfaceOrientation = UIOrientation.AutoRotation;
             PlayerSettings.allowedAutorotateToLandscapeLeft = true;
             PlayerSettings.allowedAutorotateToLandscapeRight = true;
-            PlayerSettings.allowedAutorotateToPortrait = false;
+            PlayerSettings.allowedAutorotateToPortrait = true; // mode portrait (option « Sens de l'écran »)
             PlayerSettings.allowedAutorotateToPortraitUpsideDown = false;
             PlayerSettings.runInBackground = true;
             PlayerSettings.Android.startInFullscreen = true;

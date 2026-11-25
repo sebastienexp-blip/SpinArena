@@ -76,7 +76,7 @@ namespace SpinArena
             };
             _start = Time.realtimeSinceStartup;
             _nextShot = 20f;
-            Log("Banc d'essai démarré (" + _targetRounds + " manches, " + SystemInfo.graphicsDeviceName + ", " + SystemInfo.processorType + ")");
+            Log("Banc d'essai démarré (" + _targetRounds + " manches, écran " + Screen.width + "×" + Screen.height + (Screen.height > Screen.width ? " portrait" : " paysage") + ", " + SystemInfo.graphicsDeviceName + ", " + SystemInfo.processorType + ")");
         }
 
         void Log(string s) { _lines.Add("[" + (Time.realtimeSinceStartup - _start).ToString("0") + " s] " + s); }

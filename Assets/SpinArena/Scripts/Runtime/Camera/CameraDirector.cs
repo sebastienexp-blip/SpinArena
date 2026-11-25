@@ -76,6 +76,17 @@ namespace SpinArena.CameraRig
             _shake = Mathf.Min(_shake + amount * d.shakeStrength, 0.6f * Mathf.Max(d.shakeStrength, 0.1f));
         }
 
+        /// <summary>
+        /// Angle de vue : 45° en paysage. En portrait (écran plus haut que large), l'angle vertical s'ouvre
+        /// pour que l'arène occupe toute la largeur de l'écran.
+        /// </summary>
+        public static float BaseFov(float aspect)
+        {
+            if (aspect >= 1f) return 45f;
+            float v = 2f * Mathf.Atan(Mathf.Tan(25f * Mathf.Deg2Rad) / Mathf.Max(0.3f, aspect)) * Mathf.Rad2Deg;
+            return Mathf.Clamp(v, 45f, 90f);
+        }
+
         void LateUpdate()
         {
             float dt = Time.unscaledDeltaTime;
@@ -84,7 +95,7 @@ namespace SpinArena.CameraRig
             _closeness = Mathf.MoveTowards(_closeness, _targetCloseness, dt * _focusSpeed);
             if (Mathf.Abs(_closeness - _targetCloseness) < 0.001f) _focusSpeed = 0.6f;
             _fovPunch = Mathf.MoveTowards(_fovPunch, 0f, dt * 18f);
-            Cam.fieldOfView = 45f - _fovPunch;
+            Cam.fieldOfView = BaseFov(Cam.aspect) - _fovPunch;
             _focusPoint = _focus != null && _focus.gameObject.activeInHierarchy ? _focus.position : Vector3.zero;
             _smoothedFocus = Vector3.Lerp(_smoothedFocus, _focusPoint, 1f - Mathf.Exp(-dt * 3f));
 

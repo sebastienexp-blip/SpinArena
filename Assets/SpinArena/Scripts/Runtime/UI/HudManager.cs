@@ -48,6 +48,13 @@ namespace SpinArena.UI
         readonly Queue<(string user, Texture icon, string effect)> _giftQueue = new Queue<(string, Texture, string)>();
         const int Rows = 10;
 
+        RectTransform _hudRoot;
+        CanvasScaler _scaler;
+        bool _portrait;
+        Vector2 _joinPos = new Vector2(0, 100);
+        /// <summary>Vrai quand l'écran est plus haut que large (live TikTok en vertical).</summary>
+        public bool Portrait => _portrait;
+
         void Awake()
         {
             Instance = this;
@@ -56,10 +63,9 @@ namespace SpinArena.UI
             Canvas = cgo.AddComponent<Canvas>();
             Canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             Canvas.sortingOrder = 10;
-            var scaler = cgo.AddComponent<CanvasScaler>();
-            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1920, 1080);
-            scaler.matchWidthOrHeight = 0.5f;
+            _scaler = cgo.AddComponent<CanvasScaler>();
+            _scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            _scaler.matchWidthOrHeight = 0.5f;
             cgo.AddComponent<GraphicRaycaster>();
             if (EventSystem.current == null)
             {
@@ -68,46 +74,72 @@ namespace SpinArena.UI
                 es.AddComponent<EventSystem>();
                 es.AddComponent<StandaloneInputModule>();
             }
-            Build(Canvas.transform);
+            BuildLayout(Screen.height > Screen.width);
+        }
+
+        /// <summary>
+        /// Construit l'interface pour le sens actuel de l'écran (paysage 1920×1080 ou portrait 1080×1920).
+        /// Le menu des options reste sur le même canevas : seule la couche du direct est reconstruite.
+        /// </summary>
+        void BuildLayout(bool portrait)
+        {
+            _portrait = portrait;
+            _scaler.referenceResolution = portrait ? new Vector2(1080, 1920) : new Vector2(1920, 1080);
+            if (_hudRoot != null) Destroy(_hudRoot.gameObject);
+            _rows.Clear();
+            _tags.Clear();
+            _hudRoot = UiFactory.Rect("Live", Canvas.transform, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
+            _hudRoot.SetAsFirstSibling();
+            Build(_hudRoot);
         }
 
         void Build(Transform root)
         {
             Vector2 top = new Vector2(0.5f, 1f), tl = new Vector2(0f, 1f), tr = new Vector2(1f, 1f), bottom = new Vector2(0.5f, 0f), center = new Vector2(0.5f, 0.5f);
+            bool P = _portrait;
+            float W = P ? 1080f : 1920f;
 
             // Pseudos des toupies (sous tous les panneaux).
             _tagsRoot = UiFactory.Rect("NameTags", root, Vector2.zero, Vector2.one, center, Vector2.zero, Vector2.zero);
 
-            // Légende des cadeaux (droite).
-            var legend = UiFactory.Panel("GiftLegend", root, tr, tr, new Vector2(-14, -14), new Vector2(440, 1000), UiFactory.PanelColor);
+            // Légende des cadeaux : à droite en paysage, en bas sur deux colonnes en portrait.
+            var legend = P
+                ? UiFactory.Panel("GiftLegend", root, bottom, bottom, new Vector2(0, 34), new Vector2(W - 24, 480), UiFactory.PanelColor)
+                : UiFactory.Panel("GiftLegend", root, tr, tr, new Vector2(-14, -14), new Vector2(440, 1000), UiFactory.PanelColor);
             _legendRoot = legend.rectTransform;
             RefreshLegend();
 
             // Bandeau du haut.
-            var bar = UiFactory.Panel("TopBar", root, top, top, new Vector2(0, -14), new Vector2(760, 112), UiFactory.PanelColor);
-            UiFactory.Label("Title", bar.transform, "<color=#5CE1FF>SPIN</color> ARENA", 50, TextAnchor.MiddleCenter, Color.white, top, top, new Vector2(0, -6), new Vector2(740, 60));
-            _phase = UiFactory.Label("Phase", bar.transform, "", 28, TextAnchor.MiddleLeft, UiFactory.Accent, new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(26, 8), new Vector2(320, 40));
+            var bar = UiFactory.Panel("TopBar", root, top, top, new Vector2(0, -14), new Vector2(P ? W - 24 : 760, 112), UiFactory.PanelColor);
+            float bw = P ? W - 44 : 740;
+            UiFactory.Label("Title", bar.transform, "<color=#5CE1FF>SPIN</color> ARENA", 50, TextAnchor.MiddleCenter, Color.white, top, top, new Vector2(0, -6), new Vector2(bw, 60));
+            _phase = UiFactory.Label("Phase", bar.transform, "", 28, TextAnchor.MiddleLeft, UiFactory.Accent, new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(26, 8), new Vector2(P ? 420 : 320, 40));
             _timer = UiFactory.Label("Timer", bar.transform, "", 30, TextAnchor.MiddleCenter, Color.white, bottom, bottom, new Vector2(0, 8), new Vector2(160, 40));
             _taps = UiFactory.Label("Taps", bar.transform, "", 20, TextAnchor.UpperRight, new Color(1f, 0.6f, 0.75f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-18, -8), new Vector2(240, 30));
-            _survivors = UiFactory.Label("Survivors", bar.transform, "", 28, TextAnchor.MiddleRight, UiFactory.Gold, new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-26, 8), new Vector2(320, 40));
+            _survivors = UiFactory.Label("Survivors", bar.transform, "", 28, TextAnchor.MiddleRight, UiFactory.Gold, new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-26, 8), new Vector2(P ? 420 : 320, 40));
 
-            // Liste des joueurs (gauche).
-            var list = UiFactory.Panel("Players", root, tl, tl, new Vector2(16, -16), new Vector2(380, 74 + Rows * 66), UiFactory.PanelColor);
-            UiFactory.Label("Header", list.transform, "EN LICE", 28, TextAnchor.MiddleLeft, UiFactory.Accent, tl, tl, new Vector2(20, -10), new Vector2(340, 44));
+            // Liste des joueurs : à gauche en paysage (10 lignes), sous le bandeau en portrait (6 joueurs sur 2 colonnes).
+            int rows = P ? 6 : Rows;
+            var list = P
+                ? UiFactory.Panel("Players", root, top, top, new Vector2(0, -136), new Vector2(W - 24, 56 + 3 * 64), UiFactory.PanelColor)
+                : UiFactory.Panel("Players", root, tl, tl, new Vector2(16, -16), new Vector2(380, 74 + Rows * 66), UiFactory.PanelColor);
+            UiFactory.Label("Header", list.transform, "EN LICE", P ? 26 : 28, TextAnchor.MiddleLeft, UiFactory.Accent, tl, tl, new Vector2(20, P ? -4 : -10), new Vector2(340, 44));
             _listRoot = list.rectTransform;
-            for (int i = 0; i < Rows; i++)
+            for (int i = 0; i < rows; i++)
             {
                 var r = new Row();
-                r.root = UiFactory.Rect("Row" + i, list.transform, tl, tl, tl, new Vector2(12, -62 - i * 66), new Vector2(356, 60));
+                Vector2 pos = P ? new Vector2(12 + (i % 2) * ((W - 24) / 2f), -50 - (i / 2) * 64) : new Vector2(12, -62 - i * 66);
+                float rw = P ? (W - 24) / 2f - 24 : 356;
+                r.root = UiFactory.Rect("Row" + i, list.transform, tl, tl, tl, pos, new Vector2(rw, 60));
                 r.avatar = UiFactory.Picture("Avatar", r.root, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), Vector2.zero, 54);
-                r.name = UiFactory.Label("Name", r.root, "", 25, TextAnchor.UpperLeft, Color.white, tl, tl, new Vector2(64, -2), new Vector2(230, 32));
+                r.name = UiFactory.Label("Name", r.root, "", 25, TextAnchor.UpperLeft, Color.white, tl, tl, new Vector2(64, -2), new Vector2(rw - 130, 32));
                 r.level = UiFactory.Label("Lvl", r.root, "", 22, TextAnchor.UpperRight, UiFactory.Gold, tr, tr, new Vector2(-4, -3), new Vector2(70, 30));
-                r.bar = UiFactory.Bar("Energy", r.root, new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(64, 6), new Vector2(286, 14), UiFactory.Accent);
+                r.bar = UiFactory.Bar("Energy", r.root, new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(64, 6), new Vector2(rw - 70, 14), UiFactory.Accent);
                 _rows.Add(r);
             }
 
-            // Annonces des cadeaux (image + pseudo + action), sous le bandeau du haut.
-            var gp = UiFactory.Panel("GiftPopup", root, top, top, new Vector2(0, -140), new Vector2(620, 110), new Color(0.06f, 0.04f, 0.14f, 0.9f));
+            // Annonces des cadeaux (image + pseudo + action), sous le bandeau du haut (sous la liste en portrait).
+            var gp = UiFactory.Panel("GiftPopup", root, top, top, new Vector2(0, P ? -404 : -140), new Vector2(620, 110), new Color(0.06f, 0.04f, 0.14f, 0.9f));
             _giftCard = gp.rectTransform;
             _giftGroup = gp.gameObject.AddComponent<CanvasGroup>();
             _giftIcon = UiFactory.Picture("Icon", gp.transform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(10, 0), 96);
@@ -115,29 +147,35 @@ namespace SpinArena.UI
             _giftEffect = UiFactory.Label("Effect", gp.transform, "", 30, TextAnchor.MiddleLeft, UiFactory.Gold, tl, tl, new Vector2(116, -56), new Vector2(490, 46));
             _giftGroup.alpha = 0f;
 
-            // Bas : invitation + état.
-            var hintPanel = _hintPanel = UiFactory.Panel("Hint", root, bottom, bottom, new Vector2(0, 16), new Vector2(980, 66), UiFactory.PanelColor);
-            _hint = UiFactory.Label("HintText", hintPanel.transform, "Viens dans le live : ta toupie entre <color=#FFD54A>automatiquement</color> !", 32, TextAnchor.MiddleCenter, Color.white, center, center, Vector2.zero, new Vector2(960, 60));
-            _status = UiFactory.Label("Status", root, "", 18, TextAnchor.LowerLeft, new Color(1f, 1f, 1f, 0.6f), new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(18, 10), new Vector2(560, 60));
-            _demoTag = UiFactory.Label("Demo", root, "MODE DÉMO", 30, TextAnchor.LowerLeft, new Color(1f, 0.35f, 0.3f), new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(18, 64), new Vector2(300, 44));
+            // Bas : invitation + état (au-dessus de la liste des cadeaux en portrait).
+            float hintW = P ? W - 40 : 980;
+            var hintPanel = _hintPanel = UiFactory.Panel("Hint", root, bottom, bottom, new Vector2(0, P ? 526 : 16), new Vector2(hintW, 66), UiFactory.PanelColor);
+            _hint = UiFactory.Label("HintText", hintPanel.transform, "Viens dans le live : ta toupie entre <color=#FFD54A>automatiquement</color> !", P ? 30 : 32, TextAnchor.MiddleCenter, Color.white, center, center, Vector2.zero, new Vector2(hintW - 20, 60));
+            _status = UiFactory.Label("Status", root, "", P ? 16 : 18, TextAnchor.LowerLeft, new Color(1f, 1f, 1f, 0.6f), new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(18, P ? 4 : 10), new Vector2(P ? 760 : 560, P ? 28 : 60));
+            _demoTag = P
+                ? UiFactory.Label("Demo", root, "MODE DÉMO", 24, TextAnchor.LowerRight, new Color(1f, 0.35f, 0.3f), new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-18, 2), new Vector2(260, 30))
+                : UiFactory.Label("Demo", root, "MODE DÉMO", 30, TextAnchor.LowerLeft, new Color(1f, 0.35f, 0.3f), new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(18, 64), new Vector2(300, 44));
             _demoTag.gameObject.SetActive(false);
 
             // Annonce centrale.
-            var bannerRt = UiFactory.Rect("Banner", root, center, center, center, new Vector2(0, 120), new Vector2(1200, 260));
+            float bannerW = P ? W - 40 : 1200;
+            var bannerRt = UiFactory.Rect("Banner", root, center, center, center, new Vector2(0, P ? 60 : 120), new Vector2(bannerW, 260));
             _bannerGroup = bannerRt.gameObject.AddComponent<CanvasGroup>();
-            _banner = UiFactory.Label("Big", bannerRt, "", 110, TextAnchor.MiddleCenter, Color.white, center, center, new Vector2(0, 30), new Vector2(1200, 150));
-            _bannerSub = UiFactory.Label("Sub", bannerRt, "", 40, TextAnchor.MiddleCenter, UiFactory.Gold, center, center, new Vector2(0, -70), new Vector2(1200, 60));
+            _banner = UiFactory.Label("Big", bannerRt, "", P ? 100 : 110, TextAnchor.MiddleCenter, Color.white, center, center, new Vector2(0, 30), new Vector2(bannerW, 150));
+            _bannerSub = UiFactory.Label("Sub", bannerRt, "", P ? 36 : 40, TextAnchor.MiddleCenter, UiFactory.Gold, center, center, new Vector2(0, -70), new Vector2(bannerW, 60));
             _bannerGroup.alpha = 0f;
 
             // Annonces moyennes (séries, primes, duel…), sous l'annonce des cadeaux.
-            var ann = UiFactory.Rect("Announce", root, top, top, top, new Vector2(0, -262), new Vector2(1000, 70));
+            float annW = P ? W - 40 : 1000;
+            var ann = UiFactory.Rect("Announce", root, top, top, top, new Vector2(0, P ? -526 : -262), new Vector2(annW, 70));
             _announceGroup = ann.gameObject.AddComponent<CanvasGroup>();
-            _announce = UiFactory.Label("Text", ann, "", 44, TextAnchor.MiddleCenter, Color.white, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(1000, 70));
+            _announce = UiFactory.Label("Text", ann, "", P ? 40 : 44, TextAnchor.MiddleCenter, Color.white, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(annW, 70));
             _announce.fontStyle = FontStyle.Bold;
             _announceGroup.alpha = 0f;
 
             // Carte d'entrée dans l'arène.
-            var join = UiFactory.Panel("JoinCard", root, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0, 100), new Vector2(620, 120), new Color(0.05f, 0.1f, 0.25f, 0.92f));
+            _joinPos = new Vector2(0, P ? 604 : 100);
+            var join = UiFactory.Panel("JoinCard", root, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), _joinPos, new Vector2(620, 120), new Color(0.05f, 0.1f, 0.25f, 0.92f));
             _joinCard = join.rectTransform;
             _joinGroup = join.gameObject.AddComponent<CanvasGroup>();
             _joinAvatar = UiFactory.Picture("Avatar", join.transform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(12, 0), 96);
@@ -203,7 +241,7 @@ namespace SpinArena.UI
             int cap = GameConfig.Current.display.maxNameTags;
             for (int i = 0; i < tops.Count; i++)
                 if (cap <= 0 || i < cap || tops[i].Crowned || tops[i].HasBounty) _tagAllowed.Add(tops[i].PlayerId);
-            for (int i = 0; i < Rows; i++)
+            for (int i = 0; i < _rows.Count; i++)
             {
                 var r = _rows[i];
                 if (i < tops.Count)
@@ -249,22 +287,31 @@ namespace SpinArena.UI
                 if (icon == null || !seen.Add(Live.GiftIcons.Slug(r.giftName == "Donut" ? "Doughnut" : r.giftName))) continue; // un seul « Doughnut »
                 rows.Add((icon, r.giftName, GiftEffects.NameOf(r.effect)));
             }
-            float rowH = Mathf.Min(42f, 930f / Mathf.Max(1, rows.Count));
+            // Paysage : une colonne à droite. Portrait : deux colonnes dans le panneau du bas.
+            int cols = _portrait ? 2 : 1;
+            float colW = _portrait ? (_legendRoot.sizeDelta.x - 24f) / 2f : 430f;
+            int perCol = Mathf.CeilToInt(rows.Count / (float)cols);
+            float avail = _legendRoot.sizeDelta.y - 66f;
+            float rowH = Mathf.Min(42f, avail / Mathf.Max(1, perCol));
+            int fs = _portrait ? 19 : 20;
             for (int i = 0; i < rows.Count; i++)
             {
-                float y = -56 - i * rowH;
+                int col = i / perCol, line = i % perCol;
+                float x0 = 12 + col * colW;
+                float y = -56 - line * rowH;
                 var (icon, name, action) = rows[i];
                 if (icon != null)
                 {
-                    var pic = UiFactory.Picture("Icon", _legendRoot, tl, new Vector2(0f, 0.5f), new Vector2(12, y - rowH * 0.5f), rowH - 4);
+                    var pic = UiFactory.Picture("Icon", _legendRoot, tl, new Vector2(0f, 0.5f), new Vector2(x0, y - rowH * 0.5f), rowH - 4);
                     pic.texture = icon;
                 }
                 else
                 {
-                    var dot = UiFactory.Label("Tap", _legendRoot, "x15", 18, TextAnchor.MiddleCenter, new Color(1f, 0.6f, 0.75f), tl, new Vector2(0f, 0.5f), new Vector2(10, y - rowH * 0.5f), new Vector2(rowH, rowH));
+                    UiFactory.Label("Tap", _legendRoot, "x15", 18, TextAnchor.MiddleCenter, new Color(1f, 0.6f, 0.75f), tl, new Vector2(0f, 0.5f), new Vector2(x0 - 2, y - rowH * 0.5f), new Vector2(rowH, rowH));
                 }
-                UiFactory.Label("Name", _legendRoot, name, 20, TextAnchor.MiddleLeft, Color.white, tl, new Vector2(0f, 0.5f), new Vector2(60, y - rowH * 0.5f), new Vector2(160, rowH));
-                UiFactory.Label("Action", _legendRoot, action, 20, TextAnchor.MiddleRight, UiFactory.Gold, tl, new Vector2(0f, 0.5f), new Vector2(218, y - rowH * 0.5f), new Vector2(208, rowH));
+                float nameW = colW * 0.38f, actW = colW - nameW - 60f;
+                UiFactory.Label("Name", _legendRoot, name, fs, TextAnchor.MiddleLeft, Color.white, tl, new Vector2(0f, 0.5f), new Vector2(x0 + 48, y - rowH * 0.5f), new Vector2(nameW, rowH));
+                UiFactory.Label("Action", _legendRoot, action, fs, TextAnchor.MiddleRight, UiFactory.Gold, tl, new Vector2(0f, 0.5f), new Vector2(x0 + 48 + nameW, y - rowH * 0.5f), new Vector2(actW, rowH));
             }
         }
 
@@ -391,6 +438,9 @@ namespace SpinArena.UI
         {
             float t = Time.unscaledTime, dt = Time.unscaledDeltaTime;
             var disp = GameConfig.Current.display;
+            // L'écran a tourné (option ou rotation du téléphone) : l'interface se réorganise.
+            bool portraitNow = Screen.height > Screen.width;
+            if (portraitNow != _portrait) BuildLayout(portraitNow);
             _listRoot.gameObject.SetActive(disp.showPlayerList);
             _legendRoot.gameObject.SetActive(disp.showGiftLegend);
             _hintPanel.gameObject.SetActive(disp.showHint);
@@ -414,11 +464,11 @@ namespace SpinArena.UI
                 _joinTop.color = j.rc;
                 _joinAvatar.texture = j.tex;
                 _joinUntil = t + (_joinQueue.Count > 2 ? 1.2f : 2.4f);
-                _joinCard.anchoredPosition = new Vector2(-700, 100);
+                _joinCard.anchoredPosition = new Vector2(-700, _joinPos.y);
             }
             bool joinOn = t < _joinUntil;
             _joinGroup.alpha = Mathf.MoveTowards(_joinGroup.alpha, joinOn ? 1f : 0f, dt * 5f);
-            _joinCard.anchoredPosition = Vector2.Lerp(_joinCard.anchoredPosition, new Vector2(0, 100), 1f - Mathf.Exp(-dt * 12f));
+            _joinCard.anchoredPosition = Vector2.Lerp(_joinCard.anchoredPosition, _joinPos, 1f - Mathf.Exp(-dt * 12f));
 
             _boardGroup.alpha = Mathf.MoveTowards(_boardGroup.alpha, t < _boardUntil && !_winnerVisible ? 1f : 0f, dt * 4f);
 
