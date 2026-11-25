@@ -28,7 +28,8 @@ export function normalizeUser(d) {
   const nickname = str(u.nickname || d?.nickname);
   // Toutes les tailles proposées sont regroupées pour trouver une image en JPEG/PNG si TikTok en fournit une.
   const lists = [u.avatarThumb, u.avatarMedium, u.profilePicture, u.avatarLarge]
-    .flatMap((img) => (img && (img.urlList || img.url_list || img.url)) || [])
+    .flatMap((img) => (img && (img.urlList || img.url_list || img.urls || img.url)) || [])
+    .filter((x) => typeof x === 'string')
     .concat([u.profilePictureUrl, d?.profilePictureUrl].filter(Boolean));
   const avatarUrl = bestImageUrl(lists);
   return { userId, uniqueId, nickname, avatarUrl };

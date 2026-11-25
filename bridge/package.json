@@ -1,17 +1,21 @@
 {
   "name": "spin-arena-bridge",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Pont TikTok LIVE → SPIN ARENA (Termux). Lit le chat et les cadeaux du live et les transmet au jeu par WebSocket local.",
   "type": "module",
   "main": "spin-bridge.mjs",
   "scripts": {
     "start": "node spin-bridge.mjs",
-    "test": "node test/normalize.test.mjs"
+    "test": "node test/normalize.test.mjs && node test/photos.test.mjs"
   },
-  "engines": { "node": ">=18" },
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
     "tiktok-live-connector": "^2.5.0",
-    "ws": "^8.18.0"
+    "ws": "^8.18.0",
+    "@jsquash/webp": "^1.5.0",
+    "pngjs": "^7.0.0"
   },
   "license": "UNLICENSED",
   "private": true

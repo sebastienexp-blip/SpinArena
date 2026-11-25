@@ -11,7 +11,22 @@ namespace SpinArena.Arena
     public sealed class ArenaManager : MonoBehaviour
     {
         public ArenaSettings Settings { get; private set; }
-        public float Radius => Settings.radius;
+        /// <summary>Agrandissement de toute l'arène (sol, murs, décor, gradins) selon le nombre de toupies.</summary>
+        public float Scale { get; private set; } = 1f;
+        public float Radius => Settings.radius * Scale;
+        float Rim => Settings.rimHeight * Scale;
+        public event System.Action<float> ScaleChanged;
+
+        /// <summary>Agrandit (ou ramène) l'arène entière. Appelé entre deux combats, jamais pendant.</summary>
+        public void SetScale(float k)
+        {
+            k = Mathf.Clamp(k, 1f, 3f);
+            if (Mathf.Abs(k - Scale) < 0.01f) return;
+            Scale = k;
+            transform.localScale = Vector3.one * k;
+            Physics.SyncTransforms();
+            ScaleChanged?.Invoke(k);
+        }
         public Color ThemeGlow { get; private set; }
         public Light KeyLight { get; private set; }
 
@@ -49,10 +64,11 @@ namespace SpinArena.Arena
 
         public float SurfaceHeight(float r)
         {
-            float R = Settings.radius;
-            if (r >= R) return Settings.rimHeight;
+            // Hauteur du sol en coordonnées du monde (tient compte de l'agrandissement de l'arène).
+            float R = Radius;
+            if (r >= R) return Rim;
             float t = r / R;
-            return Settings.rimHeight * t * t;
+            return Rim * t * t;
         }
 
         void BuildFloor(ArenaSettings s, Color steel)
@@ -422,7 +438,7 @@ namespace SpinArena.Arena
                     var sl = _searchlights[i];
                     // Chaque projecteur vise un point qui se promène dans l'arène.
                     float a = t * (0.25f + i * 0.05f) + i * 1.7f;
-                    var target = new Vector3(Mathf.Cos(a) * Settings.radius * 0.6f, 0f, Mathf.Sin(a * 1.3f) * Settings.radius * 0.6f);
+                    var target = new Vector3(Mathf.Cos(a) * Radius * 0.6f, 0f, Mathf.Sin(a * 1.3f) * Radius * 0.6f);
                     sl.rotation = Quaternion.LookRotation(target - sl.position);
                 }
             }
@@ -434,7 +450,7 @@ namespace SpinArena.Arena
         public bool IsOut(Vector3 p)
         {
             float r = new Vector2(p.x, p.z).magnitude;
-            return p.y < Settings.rimHeight - 2.5f && r > Settings.radius + 0.5f || r > _ledgeOuter + 2.5f || p.y < -3f;
+            return p.y < Rim - 2.5f && r > Radius + 0.5f || r > _ledgeOuter * Scale + 2.5f || p.y < -3f;
         }
 
         public bool IsInPocket(float angleDeg)
@@ -449,7 +465,7 @@ namespace SpinArena.Arena
         public Vector3 SpawnPoint(int i, int count, float radiusFactor)
         {
             float a = i / (float)Mathf.Max(1, count) * Mathf.PI * 2f + 0.3f;
-            float r = Settings.radius * radiusFactor;
+            float r = Radius * radiusFactor;
             return new Vector3(Mathf.Cos(a) * r, SurfaceHeight(r) + 0.05f, Mathf.Sin(a) * r);
         }
     }

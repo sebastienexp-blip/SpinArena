@@ -1,6 +1,6 @@
 {
     "round": {
-        "maxParticipants": 50,
+        "maxParticipants": 0,
         "minParticipants": 2,
         "lobbySeconds": 25.0,
         "countdownSeconds": 5.0,
@@ -224,7 +224,8 @@
         "connector": "bridge",
         "bridgeUrl": "ws://127.0.0.1:8787/",
         "demoSpectators": 30,
-        "inactivityMinutes": 15.0
+        "inactivityMinutes": 15.0,
+        "leaveAfterMinutes": 10.0
     },
     "effects": {
         "collectiveSpinPerGift": 0.015,

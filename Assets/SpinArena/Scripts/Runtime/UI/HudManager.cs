@@ -192,8 +192,17 @@ namespace SpinArena.UI
         }
 
         /// <summary>Met à jour la liste de gauche (meilleures énergies d'abord).</summary>
+        readonly HashSet<string> _tagAllowed = new HashSet<string>();
+        int _aliveForTags;
+
         public void SetPlayers(IList<TopController> tops, System.Func<string, int> levelOf)
         {
+            // Avec des centaines de toupies, seuls les pseudos des plus en forme (et du roi / des primes) restent affichés.
+            _aliveForTags = tops.Count;
+            _tagAllowed.Clear();
+            int cap = GameConfig.Current.display.maxNameTags;
+            for (int i = 0; i < tops.Count; i++)
+                if (cap <= 0 || i < cap || tops[i].Crowned || tops[i].HasBounty) _tagAllowed.Add(tops[i].PlayerId);
             for (int i = 0; i < Rows; i++)
             {
                 var r = _rows[i];
@@ -269,10 +278,12 @@ namespace SpinArena.UI
             if (gm != null && cam != null && disp.showNames && gm.Battle != null)
             {
                 var canvasRt = (RectTransform)Canvas.transform;
-                float scale = Mathf.Clamp(disp.nameSize, 0.5f, 2f);
+                float scale = Mathf.Clamp(disp.nameSize, 0.5f, 2f) * Mathf.Clamp(Mathf.Sqrt(45f / Mathf.Max(1, _aliveForTags)), 0.7f, 1f);
+                bool limited = disp.maxNameTags > 0 && _aliveForTags > disp.maxNameTags;
                 foreach (var top in gm.Battle.Tops.Values)
                 {
                     if (!top.Alive || !top.gameObject.activeInHierarchy) continue;
+                    if (limited && !_tagAllowed.Contains(top.PlayerId)) continue;
                     Vector3 sp = cam.WorldToScreenPoint(top.NameAnchor);
                     if (sp.z <= 0f) continue;
                     if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRt, sp, null, out var local)) continue;

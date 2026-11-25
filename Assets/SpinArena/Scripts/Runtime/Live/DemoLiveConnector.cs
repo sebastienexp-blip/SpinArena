@@ -36,7 +36,7 @@ namespace SpinArena.Live
 
         public DemoLiveConnector(int spectators, Func<RoundPhase> phase)
         {
-            _count = Math.Max(2, Math.Min(spectators, 120));
+            _count = Math.Max(2, Math.Min(spectators, 400));
             _phase = phase;
             for (int i = 0; i < _count; i++)
             {

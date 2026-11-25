@@ -49,6 +49,7 @@ namespace SpinArena.Battle
             Round.ParticipantEliminated += OnEliminated;
             Round.WinnerDecided += OnWinner;
             Round.ParticipantRevived += OnRevived;
+            Round.ParticipantWithdrawn += OnWithdrawn;
             Round.SuddenDeathStarted += () => { _hud.Banner("MORT SUBITE", "Les toupies s'épuisent 4× plus vite !", 3f, new Color(1f, 0.35f, 0.3f)); CameraDirector.Instance.Shake(0.3f); };
             Round.StandingProvider = () => _tops.Values.Where(t => t.Alive).OrderByDescending(t => t.SpinFraction).ThenByDescending(t => t.DamageDealt).Select(t => t.PlayerId);
             Round.KeepForNextRound = id => _players.IsActive(id, cfg.live.inactivityMinutes);
@@ -117,19 +118,81 @@ namespace SpinArena.Battle
             }
         }
 
-        /// <summary>Range les toupies inscrites sur un ou deux cercles de lancement.</summary>
+        /// <summary>Range les toupies inscrites sur des cercles de lancement (autant de cercles que nécessaire).</summary>
         void LayoutStaged()
         {
+            if (Round.Phase != RoundPhase.Fighting) UpdateCrowd();
             var staged = _tops.Values.Where(t => t.State == TopState.Staged || t.State == TopState.Idle).ToList();
             int n = staged.Count;
-            int outer = n <= 28 ? n : Mathf.CeilToInt(n * 0.6f);
-            for (int i = 0; i < n; i++)
+            if (n <= 28)
             {
-                bool isOuter = i < outer;
-                int idx = isOuter ? i : i - outer;
-                int cnt = isOuter ? outer : n - outer;
-                staged[i].Stage(_arena.SpawnPoint(idx, cnt, isOuter ? 0.74f : 0.46f));
+                for (int i = 0; i < n; i++) staged[i].Stage(_arena.SpawnPoint(i, n, 0.74f));
+                return;
             }
+            // Cercles du bord vers le centre ; l'écart entre toupies se resserre si la place manque.
+            float R = _arena.Radius;
+            float spacing = 2.2f * 0.42f * TopController.TopScale;
+            var rings = new List<(float f, int cap)>();
+            for (int tries = 0; tries < 6; tries++)
+            {
+                rings.Clear();
+                int total = 0;
+                for (float f = 0.8f; f > 0.08f; f -= Mathf.Max(0.06f, spacing / R))
+                {
+                    int cap = Mathf.Max(1, Mathf.FloorToInt(2f * Mathf.PI * f * R / spacing));
+                    rings.Add((f, cap)); total += cap;
+                }
+                if (total >= n) break;
+                spacing *= 0.85f;
+            }
+            int placed = 0;
+            for (int ri = 0; ri < rings.Count && placed < n; ri++)
+            {
+                int cnt = Mathf.Min(rings[ri].cap, n - placed);
+                float r = rings[ri].f * R, offset = ri * 0.37f;
+                for (int j = 0; j < cnt; j++)
+                {
+                    float a = j / (float)cnt * Mathf.PI * 2f + offset;
+                    staged[placed++].Stage(new Vector3(Mathf.Cos(a) * r, _arena.SurfaceHeight(r) + 0.05f, Mathf.Sin(a) * r));
+                }
+            }
+            // Filet de sécurité : s'il reste des toupies, elles se placent au hasard au centre.
+            for (; placed < n; placed++)
+            {
+                float a = Random.value * Mathf.PI * 2f, r = Random.value * R * 0.1f;
+                staged[placed].Stage(new Vector3(Mathf.Cos(a) * r, _arena.SurfaceHeight(r) + 0.05f, Mathf.Sin(a) * r));
+            }
+        }
+
+        /// <summary>
+        /// Adapte l'arène au nombre de toupies : jusqu'à ~45 rien ne change ; au-delà l'arène s'agrandit
+        /// (jusqu'à 2,2×) puis les toupies rapetissent un peu, et les effets coûteux sont coupés.
+        /// </summary>
+        void UpdateCrowd()
+        {
+            int n = Mathf.Max(Round.Participants.Count, _tops.Count);
+            float k = Mathf.Clamp(Mathf.Sqrt(n / 45f), 1f, 2.2f);
+            // Petite marge pour ne pas changer la taille de l'arène à chaque arrivée.
+            if (Mathf.Abs(k - _arena.Scale) > 0.06f || (k == 1f && _arena.Scale != 1f)) _arena.SetScale(k);
+            float capacity = 45f * _arena.Scale * _arena.Scale;
+            float crowd = n > capacity ? Mathf.Clamp(Mathf.Sqrt(capacity / n), 0.6f, 1f) : 1f;
+            bool low = n > Mathf.Max(20, _cfg.display.detailLimit);
+            bool changed = Mathf.Abs(crowd - TopController.CrowdScale) > 0.01f;
+            TopController.CrowdScale = crowd;
+            if (changed) foreach (var t in _tops.Values) t.RefreshScale();
+            if (low != TopController.LowDetail) { TopController.LowDetail = low; GameManager.Instance?.ApplyDisplay(); }
+        }
+
+        /// <summary>Le joueur a quitté le live avant le combat : sa toupie disparaît.</summary>
+        void OnWithdrawn(string playerId)
+        {
+            if (!_tops.TryGetValue(playerId, out var top)) return;
+            VfxManager.Instance.JoinBeam(top.transform.position, top.Glow);
+            top.Despawn();
+            _pool.Push(top);
+            _tops.Remove(playerId);
+            RebuildActive();
+            LayoutStaged();
         }
 
         // ------------------------------------------------------------------ phases
@@ -145,7 +208,7 @@ namespace SpinArena.Battle
                     foreach (var t in _tops.Values) { t.Despawn(); _pool.Push(t); }
                     _tops.Clear();
                     RebuildActive();
-                    _hud.Banner("MANCHE " + Round.RoundNumber, "Écris !join pour participer", 3f, new Color(0.6f, 0.95f, 1f));
+                    _hud.Banner("MANCHE " + Round.RoundNumber, "Viens dans le live : ta toupie entre toute seule", 3f, new Color(0.6f, 0.95f, 1f));
                     break;
                 case RoundPhase.Countdown:
                     _countdownAnnounced = false;
@@ -233,6 +296,13 @@ namespace SpinArena.Battle
         void OnEliminated(Participant part)
         {
             if (!_tops.TryGetValue(part.playerId, out var top)) return;
+            if (part.reason == EliminationReason.Disconnected)
+            {
+                // Parti du live en plein combat : la toupie s'éteint sans grosse explosion.
+                top.Eliminate(false);
+                VfxManager.Instance.JoinBeam(top.transform.position, top.Glow);
+                return;
+            }
             bool ringOut = part.reason == EliminationReason.RingOut;
             top.Eliminate(ringOut);
             VfxManager.Instance.Explosion(top.transform.position + Vector3.up * 0.3f, top.Glow, ringOut ? 0.7f : 1f);

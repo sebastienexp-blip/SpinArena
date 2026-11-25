@@ -161,10 +161,12 @@ namespace SpinArena
         {
             var r = C.round;
             Header("Joueurs");
-            Stepper("Joueurs maximum par manche", () => r.maxParticipants, v => r.maxParticipants = (int)v, 5, 100, 5, F0);
+            Stepper("Toupies maximum par manche", () => r.maxParticipants, v => r.maxParticipants = (int)v, 0, 500, 10, v => v <= 0 ? "illimité" : v.ToString("0"));
             Stepper("Joueurs minimum pour lancer", () => r.minParticipants, v => r.minParticipants = (int)v, 2, 20, 1, F0);
             Toggle("Réinscrire automatiquement les joueurs actifs", () => r.autoRejoin, v => r.autoRejoin = v);
             Stepper("Joueur inactif après", () => C.live.inactivityMinutes, v => C.live.inactivityMinutes = v, 1, 60, 1, v => v.ToString("0") + " min");
+            // TikTok ne prévient pas quand quelqu'un quitte le live : on se fie à son dernier signe de vie.
+            Stepper("Parti du live (toupie retirée) après", () => C.live.leaveAfterMinutes, v => C.live.leaveAfterMinutes = v, 0, 60, 1, v => v <= 0 ? "jamais" : v.ToString("0") + " min sans activité");
             Header("Durées");
             Stepper("Inscriptions", () => r.lobbySeconds, v => r.lobbySeconds = v, 10, 120, 5, Sec);
             Stepper("Compte à rebours", () => r.countdownSeconds, v => r.countdownSeconds = v, 3, 15, 1, Sec);
@@ -282,6 +284,8 @@ namespace SpinArena
             Header("À l'écran");
             Toggle("Pseudos au-dessus des toupies", () => d.showNames, v => d.showNames = v);
             Stepper("Taille des pseudos", () => d.nameSize, v => d.nameSize = v, 0.6f, 1.6f, 0.1f, Pct);
+            Stepper("Pseudos affichés au maximum", () => d.maxNameTags, v => d.maxNameTags = (int)v, 0, 300, 10, v => v <= 0 ? "tous" : v.ToString("0"));
+            Stepper("Effets allégés au-delà de", () => d.detailLimit, v => d.detailLimit = (int)v, 20, 400, 10, v => v.ToString("0") + " toupies");
             Toggle("Liste des cadeaux et interactions (droite)", () => d.showGiftLegend, v => d.showGiftLegend = v);
             Toggle("Photos de profil sur les toupies", () => d.showPhotos, v => d.showPhotos = v);
             Toggle("Liste des joueurs (gauche)", () => d.showPlayerList, v => d.showPlayerList = v);
@@ -321,7 +325,7 @@ namespace SpinArena
             Info(() => "État : " + _gm.Live.StatusText + "\nAdresse du pont : " + l.bridgeUrl, 110);
             ActionRow("Live TikTok (pont Termux)", "Activer", () => _gm.SetConnector("bridge"));
             ActionRow("Mode démo (spectateurs simulés)", "Activer", () => _gm.SetConnector("demo"));
-            Stepper("Spectateurs simulés en démo", () => l.demoSpectators, v => l.demoSpectators = (int)v, 5, 100, 5, F0);
+            Stepper("Spectateurs simulés en démo", () => l.demoSpectators, v => l.demoSpectators = (int)v, 5, 400, 5, F0);
             ActionRow("Relancer la connexion actuelle", "Relancer", () => _gm.SetConnector(_gm.Live.IsDemo ? "demo" : "bridge"));
         }
 

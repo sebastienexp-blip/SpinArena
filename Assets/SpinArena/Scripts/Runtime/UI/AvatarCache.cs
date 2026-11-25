@@ -82,7 +82,8 @@ namespace SpinArena.UI
             Texture2D result = null;
             // Unity ne lit que le JPEG et le PNG : si TikTok n'a fourni que du WebP, on demande la même image en JPEG.
             var attempts = new List<string> { url };
-            if (url.Contains(".webp")) attempts.Add(url.Replace(".webp", ".jpeg"));
+            // Le pont (v0.2+) sert déjà la photo convertie en PNG sur 127.0.0.1 : rien à deviner dans ce cas.
+            if (url.Contains(".webp") && !url.StartsWith("http://127.0.0.1")) attempts.Add(url.Replace(".webp", ".jpeg"));
             foreach (var u in attempts)
             {
                 using (var req = UnityWebRequestTexture.GetTexture(u, true))

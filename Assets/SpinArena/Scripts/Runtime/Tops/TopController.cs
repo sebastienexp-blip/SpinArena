@@ -59,7 +59,14 @@ namespace SpinArena.Tops
         float _decayFactor = 1f;
 
         /// <summary>Échelle des toupies : assez grandes pour rester lisibles sur un téléphone avec 50 toupies.</summary>
-        public static float TopScale => GameConfig.Current.tuning.topScale;
+        public static float TopScale => GameConfig.Current.tuning.topScale * CrowdScale;
+        /// <summary>Réduction des toupies quand l'arène est bondée (1 = taille normale).</summary>
+        public static float CrowdScale = 1f;
+        /// <summary>Beaucoup de toupies : traînées et flou coupés, collisions moins coûteuses.</summary>
+        public static bool LowDetail;
+
+        /// <summary>Réapplique la taille après un changement de CrowdScale.</summary>
+        public void RefreshScale() { if (_visualRoot != null) ApplySize(); }
         static float BodyRadius => 0.42f * TopScale;
 
         void Awake()
@@ -325,7 +332,9 @@ namespace SpinArena.Tops
             Vector3 tangent = Vector3.Cross(Vector3.up, p.normalized) * _orbitSign;
             _rb.SetVelocity((tangent * 0.8f - p.normalized * 0.45f) * strength * (0.85f + Def.speed / 300f));
             _trail.Clear();
-            _trail.emitting = GameConfig.Current.display.trails;
+            _trail.emitting = GameConfig.Current.display.trails && !LowDetail;
+            // Des centaines de toupies : détection de collision plus légère (le téléphone suit).
+            _rb.collisionDetectionMode = LowDetail ? CollisionDetectionMode.ContinuousSpeculative : CollisionDetectionMode.ContinuousDynamic;
         }
 
         public void Eliminate(bool ringOut)
@@ -559,7 +568,8 @@ namespace SpinArena.Tops
                 // Les pseudos sont affichés par l'interface (NameTags) : plus nets et lisibles qu'un texte 3D.
                 _label.gameObject.SetActive(false);
                 _photo.gameObject.SetActive(disp.showPhotos && _hasPhoto && State != TopState.Eliminated);
-                if (!disp.trails && _trail.emitting) _trail.emitting = false;
+                if ((!disp.trails || LowDetail) && _trail.emitting) _trail.emitting = false;
+                if (_blur != null && _blur.gameObject.activeSelf == LowDetail) _blur.gameObject.SetActive(!LowDetail);
             }
         }
 

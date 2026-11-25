@@ -29,6 +29,11 @@ namespace SpinArena
         public int demoSpectators = 30;
         /// <summary>Un joueur inactif depuis N minutes n'est plus réinscrit automatiquement.</summary>
         public float inactivityMinutes = 15f;
+        /// <summary>
+        /// TikTok ne signale pas quand un spectateur quitte le live : sans aucun signe de lui (arrivée, commentaire,
+        /// tapotement, don, partage) pendant N minutes, on considère qu'il est parti et il perd sa toupie. 0 = jamais.
+        /// </summary>
+        public float leaveAfterMinutes = 10f;
         /// <summary>Un spectateur qui s'abonne pendant le live entre dans l'arène (gratuit).</summary>
         public bool followJoins = true;
         /// <summary>Un spectateur qui arrive dans le live obtient sa toupie tout de suite (sans écrire !join).</summary>
@@ -94,6 +99,10 @@ namespace SpinArena
         public bool showGiftPopups = true;
         public bool showGiftLegend = true;   // liste des cadeaux et de leurs actions (droite)
         public float nameSize = 1f;          // taille des pseudos (0.6 .. 1.6)
+        /// <summary>Pseudos affichés au maximum (les toupies les plus en forme d'abord) ; 0 = tous.</summary>
+        public int maxNameTags = 60;
+        /// <summary>Au-delà de ce nombre de toupies, les effets coûteux (traînées, flou, ombres) sont coupés.</summary>
+        public int detailLimit = 90;
         public bool showJoinCards = true;
         public bool showHint = true;
         public bool showStatus = true;
@@ -160,6 +169,8 @@ namespace SpinArena
         public DisplaySettings display = new DisplaySettings();
         public SoundSettings audio = new SoundSettings();
         public ShowSettings show = new ShowSettings();
+        /// <summary>Version des réglages enregistrés (2 = toupies illimitées par défaut).</summary>
+        public int configVersion = 2;
 
         public static GameConfig Current => GameManager.Instance != null ? GameManager.Instance.Config : _fallback ?? (_fallback = new GameConfig());
         static GameConfig _fallback;
@@ -192,14 +203,18 @@ namespace SpinArena
             {
                 var asset = Resources.Load<TextAsset>("Config/game_config");
                 if (asset != null) JsonUtility.FromJsonOverwrite(asset.text, cfg);
-                if (File.Exists(OverridePath)) JsonUtility.FromJsonOverwrite(File.ReadAllText(OverridePath), cfg);
+                // Un fichier enregistré sans numéro de version vient d'une ancienne version du jeu.
+                if (File.Exists(OverridePath)) { cfg.configVersion = 1; JsonUtility.FromJsonOverwrite(File.ReadAllText(OverridePath), cfg); }
             }
             catch (Exception e)
             {
                 Debug.LogError("[SpinArena] Configuration illisible, valeurs par défaut utilisées : " + e.Message);
             }
             if (cfg.gifts == null || cfg.gifts.rules == null || cfg.gifts.rules.Count == 0) cfg.gifts = GiftSettings.CreateDefault();
-            cfg.round.maxParticipants = Mathf.Clamp(cfg.round.maxParticipants, 2, 100);
+            // Réglages enregistrés par une ancienne version (limite 5..100) : on passe en illimité, comme demandé.
+            if (cfg.configVersion < 2) { cfg.round.maxParticipants = 0; cfg.configVersion = 2; }
+            // 0 = illimité ; sinon au moins 2 joueurs.
+            cfg.round.maxParticipants = cfg.round.maxParticipants <= 0 ? 0 : Mathf.Max(2, cfg.round.maxParticipants);
             return cfg;
         }
 

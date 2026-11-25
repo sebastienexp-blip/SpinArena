@@ -42,6 +42,9 @@ namespace SpinArena
             return fallback;
         }
 
+        int _labPlayers, _labJoined;
+        bool _leaveTested;
+
         public void Begin(GameManager gm)
         {
             _out = Arg("-labout", Path.Combine(Application.persistentDataPath, "lab"));
@@ -54,11 +57,12 @@ namespace SpinArena
             gm.Config.round.maxFightSeconds = 120f;
             gm.Config.live.demoSpectators = Mathf.Max(gm.Config.live.demoSpectators, int.Parse(Arg("-labplayers", "50")));
             gm.SetConnector("demo");
+            int.TryParse(Arg("-labplayers", "50"), out _labPlayers);
             var r = gm.Battle.Round;
             r.ParticipantJoined += _ => _joins++;
             r.PhaseChanged += ph =>
             {
-                if (ph == RoundPhase.Fighting) { _fightStart = Time.time; Log("Combat : " + r.Participants.Count + " toupies"); Shot("lancement"); }
+                if (ph == RoundPhase.Fighting) { _fightStart = Time.time; Log("Combat : " + r.Participants.Count + " toupies · arène ×" + gm.Arena.Scale.ToString("0.00") + " · toupies ×" + Tops.TopController.CrowdScale.ToString("0.00") + (Tops.TopController.LowDetail ? " · effets allégés" : "")); Shot("lancement"); }
             };
             r.ParticipantEliminated += p => { if (p.reason == EliminationReason.RingOut) _ringOuts++; else _spinOuts++; };
             r.WinnerDecided += w =>
@@ -97,6 +101,24 @@ namespace SpinArena
             if (t > _nextShot) { _nextShot += 25f; Shot("vue"); }
             // Essai de la tornade à chaque manche : 20 s après le lancement, capture 2 s plus tard.
             var round = GameManager.Instance.Battle.Round;
+            // Beaucoup de joueurs : on les inscrit directement (20 par image) pendant l'attente.
+            if (round.Phase == RoundPhase.Lobby && _labPlayers > 60)
+            {
+                for (int k = 0; k < 20 && _labJoined < _labPlayers * (_roundsDone + 1); k++)
+                {
+                    int id = _labJoined++ % _labPlayers;
+                    GameManager.Instance.Battle.Join(new Core.Live.LiveUser { userId = "lab_" + id, uniqueId = "lab" + id, nickname = "Joueur" + id });
+                }
+                // Essai du départ du live : un joueur inscrit s'en va avant le combat.
+                if (!_leaveTested && round.Participants.Count > 10)
+                {
+                    _leaveTested = true;
+                    string who = round.Participants[3].playerId;
+                    bool ok = round.Withdraw(who);
+                    bool topGone = GameManager.Instance.Battle.TopOf(who) == null;
+                    Log("Départ du live testé : " + (ok && topGone ? "toupie retirée" : "ÉCHEC (retiré=" + ok + ", toupie disparue=" + topGone + ")"));
+                }
+            }
             if (round.Phase == RoundPhase.Fighting)
             {
                 float ft = Time.time - _fightStart;

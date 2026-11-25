@@ -22,7 +22,8 @@ namespace SpinArena.Core.Battle
     [Serializable]
     public sealed class RoundSettings
     {
-        public int maxParticipants = 50;
+        /// <summary>Nombre maximal de toupies en lice ; 0 = aucune limite.</summary>
+        public int maxParticipants = 0;
         public int minParticipants = 2;
         public float lobbySeconds = 25f;
         public float countdownSeconds = 5f;
@@ -80,6 +81,8 @@ namespace SpinArena.Core.Battle
         public event Action<string> WinnerDecided;   // null = égalité (tous éliminés en même temps)
         public event Action SuddenDeathStarted;
         public event Action<Participant> ParticipantRevived;
+        /// <summary>Joueur retiré avant le combat (il a quitté le live).</summary>
+        public event Action<string> ParticipantWithdrawn;
 
         public BattleRound(RoundSettings settings) { Settings = settings ?? new RoundSettings(); }
 
@@ -115,7 +118,8 @@ namespace SpinArena.Core.Battle
                                || (fighting && (Settings.joinAnytime || (PhaseTime <= Settings.lateJoinSeconds && !SuddenDeath)));
             // Pendant le combat, la place se compte en toupies encore en lice (les éliminés libèrent leur place).
             int occupied = fighting ? AliveCount : _participants.Count;
-            if (canEnterNow && occupied < Settings.maxParticipants)
+            bool room = Settings.maxParticipants <= 0 || occupied < Settings.maxParticipants;
+            if (canEnterNow && room)
             {
                 var p = new Participant { playerId = playerId };
                 _participants.Add(p);
@@ -124,7 +128,7 @@ namespace SpinArena.Core.Battle
                 return JoinResult.Joined;
             }
             if (_nextRoundQueue.Contains(playerId)) return JoinResult.AlreadyQueued;
-            if (_nextRoundQueue.Count >= Settings.maxParticipants * 2) return JoinResult.Full;
+            if (Settings.maxParticipants > 0 && _nextRoundQueue.Count >= Settings.maxParticipants * 2) return JoinResult.Full;
             _nextRoundQueue.Add(playerId);
             QueuedForNextRound?.Invoke(playerId);
             return JoinResult.Queued;
@@ -148,6 +152,22 @@ namespace SpinArena.Core.Battle
             }
             ParticipantEliminated?.Invoke(p);
             CheckForWinner();
+            return true;
+        }
+
+        /// <summary>
+        /// Le joueur a quitté le live : retiré des inscriptions et de la file, ou éliminé s'il était en plein combat.
+        /// </summary>
+        public bool Withdraw(string playerId)
+        {
+            _nextRoundQueue.Remove(playerId);
+            var p = Get(playerId);
+            if (p == null) return false;
+            if (Phase == RoundPhase.Fighting) return Eliminate(playerId, EliminationReason.Disconnected);
+            if (Phase == RoundPhase.Victory) return false;
+            _participants.Remove(p);
+            _byId.Remove(playerId);
+            ParticipantWithdrawn?.Invoke(playerId);
             return true;
         }
 

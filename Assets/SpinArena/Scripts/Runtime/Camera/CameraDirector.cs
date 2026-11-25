@@ -34,7 +34,13 @@ namespace SpinArena.CameraRig
             gameObject.AddComponent<AudioListener>();
         }
 
-        public void Configure(float arenaRadius) => _arenaRadius = arenaRadius;
+        /// <summary>Recadre la vue d'ensemble sur l'arène (elle s'agrandit quand il y a beaucoup de toupies).</summary>
+        public void Configure(float arenaRadius)
+        {
+            _arenaRadius = arenaRadius;
+            // Le fond étoilé grandit avec l'arène : la caméra doit voir assez loin pour l'atteindre.
+            if (Cam != null) Cam.farClipPlane = Mathf.Max(200f, arenaRadius * 16f);
+        }
 
         /// <summary>Plan sur une toupie (null = retour à la vue d'ensemble).</summary>
         float _focusSpeed = 0.6f, _fovPunch;

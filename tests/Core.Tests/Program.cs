@@ -46,6 +46,7 @@ static class Program
         Test("cadeaux-images-actions", GiftWiring);
         Test("déblocages-séries-primes", Unlocks);
         Test("retour-en-jeu", Revive);
+        Test("sans-limite-et-départs", NoLimitAndLeave);
 
         Console.WriteLine($"Tests du noyau : {_pass} réussis, {_fail} échoués");
         foreach (var f in Failures) Console.WriteLine("  ÉCHEC : " + f);
@@ -364,6 +365,18 @@ static class Program
         Check(!r.Revive("p1"), "une seule fois par manche");
         r.Eliminate("p2", EliminationReason.OutOfSpin);
         Check(r.Phase == RoundPhase.Victory && r.WinnerId == "p0" && r.Get("p1").placement == 3, "classement après un retour");
+    }
+
+    static void NoLimitAndLeave()
+    {
+        var r = new BattleRound(new RoundSettings { lobbySeconds = 5, countdownSeconds = 3, maxFightSeconds = 60, minParticipants = 2 });
+        for (int i = 0; i < 300; i++) r.RequestJoin("v" + i);
+        Check(r.Participants.Count == 300 && r.NextRoundQueue.Count == 0, "300 toupies sans limite");
+        string withdrawn = null; r.ParticipantWithdrawn += id => withdrawn = id;
+        Check(r.Withdraw("v5") && withdrawn == "v5" && r.Get("v5") == null && r.Participants.Count == 299, "départ avant le combat : toupie retirée");
+        r.Tick(5.01f); r.Tick(3.01f);
+        Check(r.Withdraw("v6") && !r.Get("v6").alive && r.Get("v6").reason == EliminationReason.Disconnected, "départ en plein combat : éliminé");
+        Check(!r.Withdraw("inconnu"), "départ d'un inconnu ignoré");
     }
 
     static string FindRoot()

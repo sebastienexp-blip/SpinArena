@@ -196,6 +196,10 @@ namespace SpinArena.EditorTools
                 if (string.IsNullOrEmpty(run) && File.Exists("ci-build-number.txt")) run = File.ReadAllText("ci-build-number.txt").Trim();
                 int build = int.TryParse(run, out int n) ? n : 1;
                 PlayerSettings.bundleVersion = "0.1." + build;
+#if UNITY_2022_1_OR_NEWER
+                // Les photos de profil passent par le pont local (http://127.0.0.1) qui les convertit en PNG.
+                PlayerSettings.insecureHttpOption = InsecureHttpOption.AlwaysAllowed;
+#endif
 
                 if (target == BuildTarget.Android) ConfigureAndroid(build);
                 else

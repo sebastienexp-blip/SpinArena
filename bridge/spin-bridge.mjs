@@ -11,10 +11,12 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import http from 'node:http';
 import { WebSocketServer } from 'ws';
+import { handlePhotoRequest, localPhotoUrl, photoStats as photoServed } from './photos.mjs';
 import { normalizeChat, normalizeGift, normalizeLike, normalizeSimple, dedupKey } from './normalize.mjs';
 
-const VERSION = '0.1.2';
+const VERSION = '0.2.0';
 const CONFIG_PATH = path.join(os.homedir(), '.spin-bridge.json');
 const args = process.argv.slice(2);
 const testMode = args.includes('--test');
@@ -31,7 +33,13 @@ const log = (...m) => console.log(new Date().toLocaleTimeString('fr-FR'), ...m);
 
 // ------------------------------------------------------------------ serveur local pour le jeu
 
-const wss = new WebSocketServer({ host: '127.0.0.1', port: config.port });
+// Un seul port : WebSocket pour les événements, HTTP /photo pour les photos de profil converties.
+const server = http.createServer(async (req, res) => {
+  if (await handlePhotoRequest(req, res)) return;
+  res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
+  res.end(`SPIN ARENA pont v${VERSION}`);
+});
+const wss = new WebSocketServer({ server });
 const photoStats = {};
 const stats = { chat: 0, gift: 0, like: 0, member: 0, follow: 0, duplicates: 0, games: 0, errors: 0 };
 let tiktokStatus = { status: 'starting', detail: '' };
@@ -52,7 +60,8 @@ wss.on('connection', (ws) => {
   ws.send(JSON.stringify({ type: 'status', status: tiktokStatus.status, detail: tiktokStatus.detail }));
   ws.on('close', () => log('🎮 Jeu déconnecté'));
 });
-wss.on('error', (e) => {
+server.listen(config.port, '127.0.0.1');
+server.on('error', (e) => {
   console.error(`Impossible d'ouvrir le port ${config.port} : ${e.message}. Le pont tourne peut-être déjà dans une autre session Termux.`);
   process.exit(1);
 });
@@ -74,6 +83,8 @@ function emit(ev) {
   const url = ev.user.avatarUrl || '';
   const fmt = !url ? 'aucune' : /\.(jpe?g|png)(\?|$)/i.test(url) ? 'jpeg' : /\.webp(\?|$)/i.test(url) ? 'webp' : 'autre';
   photoStats[fmt] = (photoStats[fmt] || 0) + 1;
+  // Le jeu reçoit un lien local : le pont lui sert la photo en JPEG/PNG (WebP converti).
+  if (url) ev.user.avatarUrl = localPhotoUrl(url, config.port) || url;
   broadcast(ev);
 }
 
@@ -164,7 +175,7 @@ async function startTikTok() {
 }
 
 setInterval(() => {
-  log(`📊 chat ${stats.chat} · dons ${stats.gift} · likes ${stats.like} · abonnés ${stats.follow} · doublons ${stats.duplicates} · jeux connectés ${wss.clients.size} · TikTok : ${tiktokStatus.status} · photos ${JSON.stringify(photoStats)}`);
+  log(`📊 chat ${stats.chat} · dons ${stats.gift} · likes ${stats.like} · abonnés ${stats.follow} · doublons ${stats.duplicates} · jeux connectés ${wss.clients.size} · TikTok : ${tiktokStatus.status} · photos ${JSON.stringify(photoStats)} · servies ${JSON.stringify(photoServed)}`);
 }, 60000);
 
 process.on('SIGINT', () => { log('Arrêt du pont'); process.exit(0); });
