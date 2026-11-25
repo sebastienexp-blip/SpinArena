@@ -31,6 +31,10 @@ namespace SpinArena
         public float inactivityMinutes = 15f;
         /// <summary>Un spectateur qui s'abonne pendant le live entre dans l'arène (gratuit).</summary>
         public bool followJoins = true;
+        /// <summary>Un spectateur qui arrive dans le live obtient sa toupie tout de suite (sans écrire !join).</summary>
+        public bool viewerJoins = true;
+        /// <summary>Un spectateur qui commente ou tapote obtient aussi sa toupie (utile s'il était là avant le lancement du pont).</summary>
+        public bool interactionJoins = true;
     }
 
     [Serializable]

@@ -11,8 +11,18 @@ t('chat v2', () => {
   assert.equal(e.comment, '!join');
   assert.equal(e.user.userId, '42');
   assert.equal(e.user.uniqueId, 'seb');
-  assert.equal(e.user.avatarUrl, 'https://x/a.webp');
+  assert.equal(e.user.avatarUrl, 'https://x/a.webp'); // seule image disponible
   assert.equal(e.msgId, '123');
+});
+
+t('photo : JPEG préféré au WebP et au HEIC', () => {
+  const e = normalizeChat({ user: { id: '1', avatarThumb: { urlList: ['https://p16/a~100x100.webp?x=1', 'https://p16/a~100x100.heic?x=1', 'https://p16/a~100x100.jpeg?x=1'] } }, content: 'salut' });
+  assert.equal(e.user.avatarUrl, 'https://p16/a~100x100.jpeg?x=1');
+});
+
+t('photo : JPEG trouvé dans une autre taille', () => {
+  const e = normalizeChat({ user: { id: '1', avatarThumb: { urlList: ['https://p16/t.webp'] }, avatarMedium: { urlList: ['https://p16/m.jpeg'] } }, content: 'x' });
+  assert.equal(e.user.avatarUrl, 'https://p16/m.jpeg');
 });
 
 t('gift v2 série', () => {

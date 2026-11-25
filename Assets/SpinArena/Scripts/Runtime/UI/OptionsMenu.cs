@@ -146,7 +146,7 @@ namespace SpinArena
                 "Images/s : " + Mathf.RoundToInt(_gm.Fps) + " · joueurs enregistrés : " + _gm.Players.Registry.Count + "\n" +
                 "!join acceptés : " + _gm.Commands.Accepted + " · refusés (anti-abus) : " + _gm.Commands.Rejected + "\n" +
                 "Dons reçus : " + _gm.Gifts.Processor.Received + " · exécutés : " + _gm.Gifts.Executed + " (sa toupie " + _gm.Gifts.Personal + ", une autre " + _gm.Gifts.ForOthers + ", retours " + _gm.Gifts.Revives + ", pour tous " + _gm.Gifts.Collective + ")" + " · en attente : " + _gm.Gifts.Processor.PendingCount + " · doublons : " + _gm.Gifts.Processor.Duplicates + "\n" +
-                "Tapotements : " + _gm.Likes + " · paliers donnés : " + _gm.Taps.Boosts + " · photos de profil : " + AvatarCache.Instance.Downloaded + " (échecs " + AvatarCache.Instance.Failed + ")" +
+                "Tapotements : " + _gm.Likes + " · paliers donnés : " + _gm.Taps.Boosts + " · photos de profil : " + AvatarCache.Instance.Downloaded + " (échecs " + AvatarCache.Instance.Failed + (AvatarCache.Instance.LastError != null ? " : " + AvatarCache.Instance.LastError : "") + ")" +
                 (_gm.Players.LastSaveError != null ? "\nSauvegarde : " + _gm.Players.LastSaveError : ""), 330);
             Header("Commandes de la partie");
             ActionRow("Passer à la phase suivante", "Suivante", () => round.ForceNextPhase());
@@ -201,6 +201,8 @@ namespace SpinArena
             Toggle("Halo sous les toupies Épique et plus", () => s.rarityAuras, v => s.rarityAuras = v);
             Toggle("Fumée des toupies presque à court d'énergie", () => s.lowEnergySmoke, v => s.lowEnergySmoke = v);
             Header("Spectateurs");
+            Toggle("Arriver dans le live donne sa toupie (sans !join)", () => C.live.viewerJoins, v => C.live.viewerJoins = v);
+            Toggle("Commenter ou tapoter donne aussi sa toupie", () => C.live.interactionJoins, v => C.live.interactionJoins = v);
             Toggle("S'abonner fait entrer dans l'arène", () => C.live.followJoins, v => C.live.followJoins = v);
         }
 

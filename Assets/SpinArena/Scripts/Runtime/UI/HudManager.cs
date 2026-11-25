@@ -117,7 +117,7 @@ namespace SpinArena.UI
 
             // Bas : invitation + état.
             var hintPanel = _hintPanel = UiFactory.Panel("Hint", root, bottom, bottom, new Vector2(0, 16), new Vector2(980, 66), UiFactory.PanelColor);
-            _hint = UiFactory.Label("HintText", hintPanel.transform, "Écris <color=#FFD54A>!join</color> dans le chat pour entrer dans l'arène", 32, TextAnchor.MiddleCenter, Color.white, center, center, Vector2.zero, new Vector2(960, 60));
+            _hint = UiFactory.Label("HintText", hintPanel.transform, "Viens dans le live : ta toupie entre <color=#FFD54A>automatiquement</color> !", 32, TextAnchor.MiddleCenter, Color.white, center, center, Vector2.zero, new Vector2(960, 60));
             _status = UiFactory.Label("Status", root, "", 18, TextAnchor.LowerLeft, new Color(1f, 1f, 1f, 0.6f), new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(18, 10), new Vector2(560, 60));
             _demoTag = UiFactory.Label("Demo", root, "MODE DÉMO", 30, TextAnchor.LowerLeft, new Color(1f, 0.35f, 0.3f), new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(18, 64), new Vector2(300, 44));
             _demoTag.gameObject.SetActive(false);
@@ -181,8 +181,8 @@ namespace SpinArena.UI
                 ? "SURVIVANTS " + alive + "/" + total
                 : "INSCRITS " + total + (queued > 0 ? " (+" + queued + ")" : "");
             _hint.text = phase == RoundPhase.Fighting
-                ? "<color=#FFD54A>!join</color> pour entrer à tout moment · tape l'écran pour booster ta toupie"
-                : "Écris <color=#FFD54A>!join</color> dans le chat pour entrer dans l'arène";
+                ? "Tape l'écran pour booster ta toupie · cadeaux = pouvoirs"
+                : "Viens dans le live : ta toupie entre <color=#FFD54A>automatiquement</color> !";
         }
 
         public void SetStatus(string text, bool demo)

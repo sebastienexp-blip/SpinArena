@@ -128,6 +128,7 @@ namespace SpinArena
 
         void OnLiveEvent(LiveEvent e)
         {
+            AutoJoin(e);
             switch (e.type)
             {
                 case LiveEventType.Chat: Commands.OnChat(e, Now); break;
@@ -141,6 +142,18 @@ namespace SpinArena
                     Taps.OnTaps(e.user, n);
                     break;
             }
+        }
+
+        /// <summary>Entrée automatique : arrivée dans le live, ou premier commentaire / tapotement.</summary>
+        void AutoJoin(LiveEvent e)
+        {
+            if (e.user == null || string.IsNullOrEmpty(e.user.Key) || Live.IsDemo) return;
+            var l = Config.live;
+            bool want = (e.type == LiveEventType.Member && l.viewerJoins)
+                        || ((e.type == LiveEventType.Chat || e.type == LiveEventType.Like) && l.interactionJoins);
+            if (!want || Battle.TopOf(e.user.Key) != null) return;
+            if (Battle.Round.Get(e.user.Key) != null || System.Linq.Enumerable.Contains(Battle.Round.NextRoundQueue, e.user.Key)) return;
+            Battle.Join(e.user);
         }
 
         void Update()

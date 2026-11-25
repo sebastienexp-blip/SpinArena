@@ -7,12 +7,18 @@ function firstUrl(img) {
   if (!img) return '';
   if (typeof img === 'string') return img;
   const list = img.urlList || img.url_list || img.url || [];
-  if (Array.isArray(list)) {
-    // Préférence pour une image classique (jpeg/webp) plutôt que le format heic, illisible par Unity.
-    const ok = list.find((u) => typeof u === 'string' && !/\.heic/i.test(u));
-    return ok || str(list[0]);
-  }
+  if (Array.isArray(list)) return bestImageUrl(list);
   return '';
+}
+
+/**
+ * Choisit l'image que le jeu sait afficher : Unity ne lit que le JPEG et le PNG
+ * (pas le WebP ni le HEIC, pourtant souvent proposés en premier par TikTok).
+ */
+export function bestImageUrl(list) {
+  const urls = (list || []).filter((u) => typeof u === 'string' && u.startsWith('http'));
+  const isJpgPng = (u) => /\.(jpe?g|png)(\?|$)/i.test(u) || /[?&]format=(jpe?g|png)/i.test(u);
+  return urls.find(isJpgPng) || urls.find((u) => !/\.(heic|webp)(\?|$)/i.test(u)) || urls.find((u) => !/\.heic(\?|$)/i.test(u)) || urls[0] || '';
 }
 
 export function normalizeUser(d) {
@@ -20,9 +26,11 @@ export function normalizeUser(d) {
   const userId = str(u.userId || u.id || d?.userId);
   const uniqueId = str(u.uniqueId || u.displayId || d?.uniqueId);
   const nickname = str(u.nickname || d?.nickname);
-  const avatarUrl =
-    str(u.profilePictureUrl || d?.profilePictureUrl) ||
-    firstUrl(u.avatarThumb) || firstUrl(u.avatarMedium) || firstUrl(u.profilePicture) || firstUrl(u.avatarLarge);
+  // Toutes les tailles proposées sont regroupées pour trouver une image en JPEG/PNG si TikTok en fournit une.
+  const lists = [u.avatarThumb, u.avatarMedium, u.profilePicture, u.avatarLarge]
+    .flatMap((img) => (img && (img.urlList || img.url_list || img.url)) || [])
+    .concat([u.profilePictureUrl, d?.profilePictureUrl].filter(Boolean));
+  const avatarUrl = bestImageUrl(lists);
   return { userId, uniqueId, nickname, avatarUrl };
 }
 

@@ -14,7 +14,7 @@ import path from 'node:path';
 import { WebSocketServer } from 'ws';
 import { normalizeChat, normalizeGift, normalizeLike, normalizeSimple, dedupKey } from './normalize.mjs';
 
-const VERSION = '0.1.1';
+const VERSION = '0.1.2';
 const CONFIG_PATH = path.join(os.homedir(), '.spin-bridge.json');
 const args = process.argv.slice(2);
 const testMode = args.includes('--test');
@@ -32,6 +32,7 @@ const log = (...m) => console.log(new Date().toLocaleTimeString('fr-FR'), ...m);
 // ------------------------------------------------------------------ serveur local pour le jeu
 
 const wss = new WebSocketServer({ host: '127.0.0.1', port: config.port });
+const photoStats = {};
 const stats = { chat: 0, gift: 0, like: 0, member: 0, follow: 0, duplicates: 0, games: 0, errors: 0 };
 let tiktokStatus = { status: 'starting', detail: '' };
 
@@ -69,6 +70,10 @@ function emit(ev) {
     if (seenOrder.length > 5000) seen.delete(seenOrder.shift());
   }
   stats[ev.type] = (stats[ev.type] || 0) + 1;
+  // Diagnostic des photos de profil : quel format TikTok fournit-il ?
+  const url = ev.user.avatarUrl || '';
+  const fmt = !url ? 'aucune' : /\.(jpe?g|png)(\?|$)/i.test(url) ? 'jpeg' : /\.webp(\?|$)/i.test(url) ? 'webp' : 'autre';
+  photoStats[fmt] = (photoStats[fmt] || 0) + 1;
   broadcast(ev);
 }
 
@@ -159,7 +164,7 @@ async function startTikTok() {
 }
 
 setInterval(() => {
-  log(`📊 chat ${stats.chat} · dons ${stats.gift} · likes ${stats.like} · abonnés ${stats.follow} · doublons ${stats.duplicates} · jeux connectés ${wss.clients.size} · TikTok : ${tiktokStatus.status}`);
+  log(`📊 chat ${stats.chat} · dons ${stats.gift} · likes ${stats.like} · abonnés ${stats.follow} · doublons ${stats.duplicates} · jeux connectés ${wss.clients.size} · TikTok : ${tiktokStatus.status} · photos ${JSON.stringify(photoStats)}`);
 }, 60000);
 
 process.on('SIGINT', () => { log('Arrêt du pont'); process.exit(0); });

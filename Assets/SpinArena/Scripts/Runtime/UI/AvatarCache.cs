@@ -74,27 +74,44 @@ namespace SpinArena.UI
             }
         }
 
+        public string LastError { get; private set; }
+
         IEnumerator Download(string url, string key)
         {
             _active++;
-            using (var req = UnityWebRequestTexture.GetTexture(url, true))
+            Texture2D result = null;
+            // Unity ne lit que le JPEG et le PNG : si TikTok n'a fourni que du WebP, on demande la même image en JPEG.
+            var attempts = new List<string> { url };
+            if (url.Contains(".webp")) attempts.Add(url.Replace(".webp", ".jpeg"));
+            foreach (var u in attempts)
             {
-                req.timeout = 10;
-                yield return req.SendWebRequest();
-                Texture2D result = null;
-                if (req.result == UnityWebRequest.Result.Success)
+                using (var req = UnityWebRequestTexture.GetTexture(u, true))
                 {
-                    var raw = DownloadHandlerTexture.GetContent(req);
-                    if (raw != null)
-                    {
-                        result = MakeRound(raw);
-                        Destroy(raw);
-                        Store(key, result);
-                        SaveDisk(key, result);
-                        Downloaded++;
-                    }
+                    req.timeout = 10;
+                    yield return req.SendWebRequest();
+                    if (req.result != UnityWebRequest.Result.Success) { LastError = req.error; continue; }
+                    Texture2D raw = null;
+                    try { raw = DownloadHandlerTexture.GetContent(req); }
+                    catch (Exception e) { LastError = e.Message; }
+                    // Image illisible : Unity renvoie une petite texture « ? » de 8×8.
+                    if (raw == null || raw.width <= 8) { LastError = "format d'image non lu (" + System.IO.Path.GetExtension(u.Split('?')[0]) + ")"; if (raw != null) Destroy(raw); continue; }
+                    result = MakeRound(raw);
+                    Destroy(raw);
+                    break;
                 }
-                else Failed++;
+            }
+            {
+                if (result != null)
+                {
+                    Store(key, result);
+                    SaveDisk(key, result);
+                    Downloaded++;
+                }
+                else
+                {
+                    Failed++;
+                    Debug.LogWarning("[SpinArena] Photo de profil non chargée : " + LastError);
+                }
                 if (_waiting.TryGetValue(key, out var list))
                 {
                     _waiting.Remove(key);
