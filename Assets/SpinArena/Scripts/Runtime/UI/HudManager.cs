@@ -89,6 +89,7 @@ namespace SpinArena.UI
             // la largeur en portrait et sur la hauteur en paysage : rien n'est coupé sur les bords.
             _scaler.matchWidthOrHeight = portrait ? 0f : 1f;
             if (_hudRoot != null) Destroy(_hudRoot.gameObject);
+            if (_tagsRoot != null) Destroy(_tagsRoot.gameObject);
             _rows.Clear();
             _tags.Clear();
             _hudRoot = UiFactory.Rect("Live", Canvas.transform, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
@@ -122,8 +123,9 @@ namespace SpinArena.UI
             // Largeur utile réelle (zone sûre comprise) : en portrait le canevas fait 1080 de large.
             float W = P ? 1080f * (_hudRoot.anchorMax.x - _hudRoot.anchorMin.x) : 1920f;
 
-            // Pseudos des toupies (sous tous les panneaux).
-            _tagsRoot = UiFactory.Rect("NameTags", root, Vector2.zero, Vector2.one, center, Vector2.zero, Vector2.zero);
+            // Pseudos des toupies (sous tous les panneaux), sur tout l'écran : ils suivent les toupies, pas la zone sûre.
+            _tagsRoot = UiFactory.Rect("NameTags", Canvas.transform, Vector2.zero, Vector2.one, center, Vector2.zero, Vector2.zero);
+            _tagsRoot.SetAsFirstSibling();
 
             // Légende des cadeaux : à droite en paysage, en bas sur deux colonnes en portrait.
             var legend = P
