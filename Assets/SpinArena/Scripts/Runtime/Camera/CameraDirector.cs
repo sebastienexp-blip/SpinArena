@@ -104,6 +104,12 @@ namespace SpinArena.CameraRig
             float pitch = Mathf.Lerp(52f, 30f, _closeness);
             Quaternion rot = Quaternion.Euler(pitch, _orbit, 0f);
             Vector3 look = Vector3.Lerp(Vector3.zero, _smoothedFocus + Vector3.up * 0.6f, Mathf.Clamp01(_closeness * 2f));
+            if (Cam.aspect < 1f)
+            {
+                // Portrait : l'arène remonte un peu pour se placer entre le classement (haut) et les cadeaux (bas).
+                Vector3 fwd = rot * Vector3.forward; fwd.y = 0f;
+                look -= fwd.normalized * _arenaRadius * 0.2f * (1f - _closeness);
+            }
             Vector3 pos = look - rot * Vector3.forward * dist;
             if (_shake > 0f)
             {
