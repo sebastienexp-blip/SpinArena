@@ -79,9 +79,9 @@
             {
                 "giftName": "Heart Me",
                 "minDiamonds": 0,
-                "tier": 1,
-                "effect": "super_heal",
-                "perUserCooldown": 6.0,
+                "tier": 0,
+                "effect": "wheel",
+                "perUserCooldown": 0.0,
                 "coins": 1
             },
             {
