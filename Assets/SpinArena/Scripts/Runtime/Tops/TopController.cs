@@ -609,7 +609,9 @@ namespace SpinArena.Tops
             {
                 var s = Effective;
                 var tune = GameConfig.Current.tuning;
-                Spin -= CombatMath.SpinDecayPerSecond(s, _decayFactor) * tune.spinDecay * Time.fixedDeltaTime;
+                // Pas de perte naturelle (réglage 0) ; seule la mort subite fait baisser l'énergie toute seule.
+                float decayMult = _decayFactor > 1f ? Mathf.Max(tune.spinDecay, 0.5f) : tune.spinDecay;
+                Spin -= CombatMath.SpinDecayPerSecond(s, _decayFactor) * decayMult * Time.fixedDeltaTime;
                 if (Spin < 0f) Spin = 0f;
                 float vigor = Mathf.Lerp(0.35f, 1f, SpinFraction);
                 Vector3 v = _rb.GetVelocity();

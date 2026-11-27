@@ -70,7 +70,8 @@ namespace SpinArena.CameraRig
         /// <summary>Resserre légèrement le cadre selon le nombre de survivants.</summary>
         public void SetTension(float tension01)
         {
-            if (_focus == null) _targetCloseness = Mathf.Clamp01(tension01) * 0.35f;
+            // Le cadrage automatique sur les toupies remplace le resserrement : rien à faire ici.
+            if (_focus == null) _targetCloseness = 0f;
         }
 
         public void Shake(float amount)
@@ -86,6 +87,59 @@ namespace SpinArena.CameraRig
         /// </summary>
         /// <summary>Gros plans plus éloignés quand les toupies sont plus grosses.</summary>
         static float TopScaleFactor => Mathf.Max(1f, GameConfig.Current.tuning.topScale / 1.55f);
+
+        float _fitDist;
+        Vector3 _fitCenter;
+        readonly System.Collections.Generic.List<(Vector3 p, float r)> _field = new System.Collections.Generic.List<(Vector3, float)>();
+
+        void CollectField()
+        {
+            _field.Clear();
+            var br = GameManager.Instance != null ? GameManager.Instance.Battle : null;
+            if (br == null) return;
+            foreach (var t in br.OnField()) _field.Add((t.transform.position + Vector3.up * 0.4f, t.VisualRadius + 0.6f));
+        }
+
+        /// <summary>Centre des toupies (à plat), ramené doucement vers le centre de l'arène.</summary>
+        Vector3 FieldCenter()
+        {
+            CollectField();
+            if (_field.Count == 0) return Vector3.zero;
+            Vector3 min = _field[0].p, max = _field[0].p;
+            foreach (var f in _field) { min = Vector3.Min(min, f.p); max = Vector3.Max(max, f.p); }
+            Vector3 c = (min + max) * 0.5f; c.y = 0f;
+            return c * 0.7f;
+        }
+
+        /// <summary>Plus petite distance de caméra pour laquelle toutes les toupies tiennent dans le cadre utile.</summary>
+        float FitDistance(Quaternion rot, Vector3 look, float baseDist)
+        {
+            if (_field.Count == 0) return baseDist;
+            float tanV = Mathf.Tan(Cam.fieldOfView * 0.5f * Mathf.Deg2Rad), tanH = tanV * Cam.aspect;
+            bool portrait = Cam.aspect < 1f;
+            // Zones libres : en portrait le haut porte le chrono et le bas est couvert par le chat TikTok.
+            float top = portrait ? 0.62f : 0.72f, bottom = portrait ? -0.55f : -0.85f, side = 0.86f;
+            var inv = Quaternion.Inverse(rot);
+            Vector3 fwd = rot * Vector3.forward;
+            float lo = baseDist * 0.55f, hi = baseDist * 2.6f;
+            for (int it = 0; it < 14; it++)
+            {
+                float d = (lo + hi) * 0.5f;
+                Vector3 pos = look - fwd * d;
+                bool ok = true;
+                foreach (var f in _field)
+                {
+                    Vector3 v = inv * (f.p - pos);
+                    if (v.z < 0.5f) { ok = false; break; }
+                    float rx = f.r / v.z;
+                    float x = v.x / (v.z * tanH), y = v.y / (v.z * tanV);
+                    float ry = rx / tanV, rxh = rx / tanH;
+                    if (Mathf.Abs(x) + rxh > side || y + ry > top || y - ry < bottom) { ok = false; break; }
+                }
+                if (ok) hi = d; else lo = d;
+            }
+            return hi;
+        }
 
         public static float BaseFov(float aspect)
         {
@@ -109,13 +163,18 @@ namespace SpinArena.CameraRig
             // Vue d'ensemble : toute l'arène tient dans un écran 16:9 (caméra en hauteur, inclinée).
             // Portrait : caméra plus plongeante et plus proche, l'arène remplit tout l'écran (le bord déborde un peu).
             bool portrait = Cam.aspect < 1f;
-            float dist = Mathf.Lerp(_arenaRadius * (portrait ? 2.0f : 2.45f) * Mathf.Clamp(disp.cameraDistance, 0.6f, 1.5f), 7f * TopScaleFactor, _closeness);
+            float baseDist = _arenaRadius * (portrait ? 2.0f : 2.45f) * Mathf.Clamp(disp.cameraDistance, 0.6f, 1.5f);
             _low = Mathf.MoveTowards(_low, Time.time < _lowUntil ? 1f : 0f, dt * 0.8f);
             float lowEase = _low * _low * (3f - 2f * _low);
             float pitch = Mathf.Lerp(Mathf.Lerp(portrait ? 64f : 52f, portrait ? 38f : 34f, lowEase), 30f, _closeness);
-            dist *= 1f + 0.12f * lowEase;
             Quaternion rot = Quaternion.Euler(pitch, _orbit, 0f);
-            Vector3 look = Vector3.Lerp(Vector3.zero, _smoothedFocus + Vector3.up * 0.6f, Mathf.Clamp01(_closeness * 2f));
+            // Vue d'ensemble cadrée sur les toupies : toutes restent visibles (hors zones de l'interface et du chat).
+            Vector3 center = FieldCenter();
+            _fitCenter = Vector3.Lerp(_fitCenter, center, 1f - Mathf.Exp(-dt * 1.5f));
+            float fit = FitDistance(rot, _fitCenter, baseDist);
+            _fitDist = _fitDist <= 0f ? fit : Mathf.Lerp(_fitDist, fit, 1f - Mathf.Exp(-dt * (fit > _fitDist ? 4f : 1.2f)));
+            float dist = Mathf.Lerp(_fitDist, 7f * TopScaleFactor, _closeness);
+            Vector3 look = Vector3.Lerp(_fitCenter, _smoothedFocus + Vector3.up * 0.6f, Mathf.Clamp01(_closeness * 2f));
             Vector3 pos = look - rot * Vector3.forward * dist;
             if (_shake > 0f)
             {

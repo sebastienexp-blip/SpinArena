@@ -168,6 +168,7 @@ namespace SpinArena
             Stepper("Toupies maximum par manche", () => r.maxParticipants, v => r.maxParticipants = (int)v, 0, 500, 10, v => v <= 0 ? "illimité" : v.ToString("0"));
             Stepper("Joueurs minimum pour lancer", () => r.minParticipants, v => r.minParticipants = (int)v, 2, 20, 1, F0);
             Toggle("Réinscrire automatiquement les joueurs actifs", () => r.autoRejoin, v => r.autoRejoin = v);
+            Toggle("Bots quand il y a 0 ou 1 toupie", () => C.live.bots, v => C.live.bots = v);
             Stepper("Joueur inactif après", () => C.live.inactivityMinutes, v => C.live.inactivityMinutes = v, 1, 60, 1, v => v.ToString("0") + " min");
             // TikTok ne prévient pas quand quelqu'un quitte le live : on se fie à son dernier signe de vie.
             Stepper("Parti du live (toupie retirée) après", () => C.live.leaveAfterMinutes, v => C.live.leaveAfterMinutes = v, 0, 60, 0.5f, v => v <= 0 ? "jamais" : v.ToString("0.#") + " min sans activité");
@@ -219,7 +220,7 @@ namespace SpinArena
             Header("Physique");
             Stepper("Dégâts des chocs", () => t.damage, v => t.damage = v, 0.25f, 3f, 0.05f, Pct);
             Stepper("Force des projections", () => t.knockback, v => t.knockback = v, 0.25f, 3f, 0.05f, Pct);
-            Stepper("Perte d'énergie naturelle", () => t.spinDecay, v => t.spinDecay = v, 0.25f, 3f, 0.05f, Pct);
+            Stepper("Perte d'énergie naturelle", () => t.spinDecay, v => t.spinDecay = v, 0f, 3f, 0.05f, v => v <= 0f ? "aucune" : Pct(v));
             Stepper("Vitesse des toupies", () => t.speed, v => t.speed = v, 0.5f, 2f, 0.05f, Pct);
             Stepper("Élan au lancement", () => t.launchPower, v => t.launchPower = v, 3f, 15f, 0.5f, F1);
             Stepper("Taille des toupies", () => t.topScale, v => t.topScale = v, 1.2f, 3.6f, 0.1f, v => (v / 2.7f * 100f).ToString("0") + " %");

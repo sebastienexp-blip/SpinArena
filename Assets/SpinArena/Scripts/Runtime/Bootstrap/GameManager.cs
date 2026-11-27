@@ -161,9 +161,9 @@ namespace SpinArena
             if (minutes <= 0f || Live == null || Live.IsDemo || Battle == null) return;
             _leaving.Clear();
             foreach (var part in Battle.Round.Participants)
-                if (part.alive && !Players.IsActive(part.playerId, minutes)) _leaving.Add(part.playerId);
+                if (part.alive && !BattleRoyaleManager.IsBot(part.playerId) && !Players.IsActive(part.playerId, minutes)) _leaving.Add(part.playerId);
             foreach (var q in Battle.Round.NextRoundQueue)
-                if (!Players.IsActive(q, minutes)) _leaving.Add(q);
+                if (!BattleRoyaleManager.IsBot(q) && !Players.IsActive(q, minutes)) _leaving.Add(q);
             foreach (var id in _leaving)
                 if (Battle.Round.Withdraw(id)) Debug.Log("[SpinArena] " + id + " a quitté le live : toupie retirée");
         }

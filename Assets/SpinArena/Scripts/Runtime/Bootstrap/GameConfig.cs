@@ -35,6 +35,8 @@ namespace SpinArena
         /// tapotement, don, partage) pendant N minutes, on considère qu'il est parti et il perd sa toupie. 0 = jamais.
         /// </summary>
         public float leaveAfterMinutes = 1f;
+        /// <summary>Quand il n'y a aucune toupie ou une seule, des bots entrent pour que la partie tourne (ils partent dès qu'il y a 2 vrais joueurs).</summary>
+        public bool bots = true;
         /// <summary>Un spectateur qui s'abonne pendant le live entre dans l'arène (gratuit).</summary>
         public bool followJoins = true;
         /// <summary>Un spectateur qui arrive dans le live obtient sa toupie tout de suite (sans écrire !join).</summary>
@@ -85,7 +87,7 @@ namespace SpinArena
     {
         public float damage = 0.75f;       // dégâts des chocs (parties plus longues)
         public float knockback = 1f;       // force des projections
-        public float spinDecay = 0.6f;     // perte d'énergie naturelle (parties plus longues)
+        public float spinDecay = 0f;       // perte d'énergie naturelle : 0 = l'énergie ne baisse plus toute seule
         public float speed = 1f;           // vitesse de déplacement
         public float topScale = 2.7f;      // taille de base des toupies (grosses, photo bien visible)
         public float maxSize = 1.8f;       // taille maximale (tapotements, cadeaux)
@@ -177,7 +179,7 @@ namespace SpinArena
         public SoundSettings audio = new SoundSettings();
         public ShowSettings show = new ShowSettings();
         /// <summary>Version des réglages enregistrés (2 = toupies illimitées par défaut).</summary>
-        public int configVersion = 7;
+        public int configVersion = 8;
 
         public static GameConfig Current => GameManager.Instance != null ? GameManager.Instance.Config : _fallback ?? (_fallback = new GameConfig());
         static GameConfig _fallback;
@@ -258,6 +260,8 @@ namespace SpinArena
                 cfg.live.leaveAfterMinutes = 1f; cfg.live.inactivityMinutes = 1f;
                 cfg.configVersion = 7;
             }
+            // Version 8 : l'énergie ne baisse plus toute seule (seulement les chocs, et la mort subite après 5 min).
+            if (cfg.configVersion < 8) { cfg.tuning.spinDecay = 0f; cfg.configVersion = 8; }
             // 0 = illimité ; sinon au moins 2 joueurs.
             cfg.round.maxParticipants = cfg.round.maxParticipants <= 0 ? 0 : Mathf.Max(2, cfg.round.maxParticipants);
             return cfg;

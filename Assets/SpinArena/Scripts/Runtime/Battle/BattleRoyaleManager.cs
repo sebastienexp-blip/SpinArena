@@ -59,6 +59,44 @@ namespace SpinArena.Battle
 
         // ------------------------------------------------------------------ inscriptions
 
+        // ------------------------------------------------------------------ bots
+
+        static readonly string[] BotNames = { "BOT Orion", "BOT Zéphyr", "BOT Titan", "BOT Nova", "BOT Volt", "BOT Kaos" };
+        public static bool IsBot(string playerId) => playerId != null && playerId.StartsWith("bot_");
+        float _botTimer;
+
+        /// <summary>
+        /// Aucune toupie ou une seule : des bots complètent jusqu'à 3 toupies pour que la partie tourne.
+        /// Dès qu'au moins 2 vrais joueurs sont inscrits, les bots s'en vont (avant le combat).
+        /// </summary>
+        void MaintainBots(float dt)
+        {
+            _botTimer -= dt;
+            if (_botTimer > 0f) return;
+            _botTimer = 1f;
+            var phase = Round.Phase;
+            if (phase != RoundPhase.Lobby && phase != RoundPhase.Countdown) return;
+            var parts = Round.Participants;
+            int real = parts.Count(p => !IsBot(p.playerId));
+            var bots = parts.Where(p => IsBot(p.playerId)).Select(p => p.playerId).ToList();
+            if (!_cfg.live.bots || real >= 2)
+            {
+                foreach (var id in bots) Round.Withdraw(id);
+                return;
+            }
+            int wanted = 3 - real;
+            for (int i = 0; bots.Count < wanted && i < BotNames.Length; i++)
+            {
+                string id = "bot_" + i;
+                if (bots.Contains(id)) continue;
+                Join(new LiveUser { userId = id, uniqueId = id, nickname = BotNames[i] });
+                bots.Add(id);
+            }
+        }
+
+        /// <summary>Toupies présentes sur la plateforme (pas éliminées) : la caméra les cadre toutes.</summary>
+        public IEnumerable<TopController> OnField() => _tops.Values.Where(t => t.State != TopState.Eliminated && t.gameObject.activeInHierarchy);
+
         public BattleRound.JoinResult Join(LiveUser user)
         {
             var p = _players.Touch(user);
@@ -273,6 +311,7 @@ namespace SpinArena.Battle
         {
             float dt = Time.deltaTime;
             Round.Tick(dt);
+            MaintainBots(dt);
             var phase = Round.Phase;
 
             if (phase == RoundPhase.Countdown)
