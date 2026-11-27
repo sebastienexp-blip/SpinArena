@@ -209,9 +209,27 @@ namespace SpinArena.Arena
             var wallMat = MaterialLibrary.Metal(new Color(0.18f, 0.2f, 0.26f), 0.9f, 0.65f, Color.black);
             _glowMat = MaterialLibrary.Metal(Color.black, 0f, 0.5f, ThemeGlow * 3f);
             float ri = s.radius + 0.75f, ro = s.radius + 1.1f, y0 = s.rimHeight;
-            for (int i = 0; i < _pockets.Count; i++)
+            // Sans ouverture : un seul muret qui fait tout le tour (aucune sortie possible).
+            var segments = new List<Vector2>();
+            if (_pockets.Count == 0) segments.Add(new Vector2(0f, 360f));
+            else for (int i = 0; i < _pockets.Count; i++) segments.Add(new Vector2(_pockets[i].y, _pockets[(i + 1) % _pockets.Count].x + (i + 1 == _pockets.Count ? 360f : 0f)));
+            // Barrière invisible très haute : même projetée en l'air (tornade, chocs), une toupie reste dans l'arène.
+            var barrier = new GameObject("Barrier");
+            barrier.transform.SetParent(transform, false);
+            for (int b = 0; b < 72; b++)
             {
-                float a0 = _pockets[i].y, a1 = _pockets[(i + 1) % _pockets.Count].x + (i + 1 == _pockets.Count ? 360f : 0f);
+                float am = (b + 0.5f) / 72f * Mathf.PI * 2f;
+                var box = new GameObject("B");
+                box.transform.SetParent(barrier.transform, false);
+                box.transform.localPosition = new Vector3(Mathf.Cos(am) * (ri + 0.2f), y0 + 8f, Mathf.Sin(am) * (ri + 0.2f));
+                box.transform.localRotation = Quaternion.Euler(0f, -am * Mathf.Rad2Deg + 90f, 0f);
+                var bc = box.AddComponent<BoxCollider>();
+                bc.size = new Vector3(2f * Mathf.PI * (ri + 0.2f) / 72f + 0.1f, 22f, 0.6f);
+                bc.SetPhysics("Barrier", 0f, 0.4f, true, true);
+            }
+            for (int i = 0; i < segments.Count; i++)
+            {
+                float a0 = segments[i].x, a1 = segments[i].y;
                 var wall = ArcMesh(ri, ro, y0 - 0.2f, y0 + s.wallHeight, a0, a1, 24);
                 var go = new GameObject("Wall" + i);
                 go.transform.SetParent(transform, false);

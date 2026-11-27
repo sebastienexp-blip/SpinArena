@@ -170,11 +170,12 @@ namespace SpinArena
             Toggle("Réinscrire automatiquement les joueurs actifs", () => r.autoRejoin, v => r.autoRejoin = v);
             Stepper("Joueur inactif après", () => C.live.inactivityMinutes, v => C.live.inactivityMinutes = v, 1, 60, 1, v => v.ToString("0") + " min");
             // TikTok ne prévient pas quand quelqu'un quitte le live : on se fie à son dernier signe de vie.
-            Stepper("Parti du live (toupie retirée) après", () => C.live.leaveAfterMinutes, v => C.live.leaveAfterMinutes = v, 0, 60, 1, v => v <= 0 ? "jamais" : v.ToString("0") + " min sans activité");
+            Stepper("Parti du live (toupie retirée) après", () => C.live.leaveAfterMinutes, v => C.live.leaveAfterMinutes = v, 0, 60, 0.5f, v => v <= 0 ? "jamais" : v.ToString("0.#") + " min sans activité");
             Header("Durées");
             Stepper("Inscriptions", () => r.lobbySeconds, v => r.lobbySeconds = v, 10, 120, 5, Sec);
             Stepper("Compte à rebours", () => r.countdownSeconds, v => r.countdownSeconds = v, 3, 15, 1, Sec);
-            Stepper("Durée du combat avant la mort subite", () => r.maxFightSeconds, v => r.maxFightSeconds = v, 60, 600, 15, Sec);
+            Stepper("Durée du combat avant la mort subite", () => r.maxFightSeconds, v => r.maxFightSeconds = v, 60, 900, 15, Sec);
+            Toggle("Fin seulement au dernier survivant", () => r.endOnlyWithOneLeft, v => r.endOnlyWithOneLeft = v);
             Stepper("Écran du vainqueur", () => r.victorySeconds, v => r.victorySeconds = v, 4, 30, 1, Sec);
             Toggle("Rejoindre à tout moment (même en plein combat)", () => r.joinAnytime, v => r.joinAnytime = v);
             Stepper("Énergie à l'arrivée en cours de combat", () => r.lateJoinEnergy, v => r.lateJoinEnergy = v, 0.3f, 1f, 0.1f, Pct);
@@ -229,7 +230,8 @@ namespace SpinArena
             Stepper("Dégâts des météores", () => fx.meteorDamage, v => fx.meteorDamage = v, 0f, 0.3f, 0.01f, Pct);
             Header("Arène (au prochain lancement du jeu)");
             Stepper("Rayon de l'arène", () => a.radius, v => a.radius = v, 12f, 24f, 1f, v => v.ToString("0") + " m");
-            Stepper("Nombre d'ouvertures (éjections)", () => a.pocketCount, v => a.pocketCount = (int)v, 0, 8, 1, F0);
+            Toggle("Éjections hors de l'arène", () => a.ringOuts, v => a.ringOuts = v);
+            Stepper("Nombre d'ouvertures (éjections)", () => a.pocketCount, v => a.pocketCount = (int)v, 0, 8, 1, v => v <= 0 ? "aucune (arène fermée)" : v.ToString("0"));
             Stepper("Largeur des ouvertures", () => a.pocketDegrees, v => a.pocketDegrees = v, 10f, 40f, 2f, v => v.ToString("0") + "°");
         }
 

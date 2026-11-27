@@ -14,7 +14,8 @@ namespace SpinArena
         public float radius = 16f;
         public float rimHeight = 2.4f;
         public float wallHeight = 0.7f;
-        public int pocketCount = 4;
+        public int pocketCount = 0;      // ouvertures dans le muret : 0 = arène fermée, aucune toupie ne tombe
+        public bool ringOuts = false;    // éjections hors de l'arène ; sinon une toupie qui sortirait est remise sur la plateforme
         public float pocketDegrees = 22f;
         public string theme = "electric";
     }
@@ -28,12 +29,12 @@ namespace SpinArena
         /// <summary>Nombre de spectateurs simulés en mode démo.</summary>
         public int demoSpectators = 30;
         /// <summary>Un joueur inactif depuis N minutes n'est plus réinscrit automatiquement.</summary>
-        public float inactivityMinutes = 15f;
+        public float inactivityMinutes = 1f;
         /// <summary>
         /// TikTok ne signale pas quand un spectateur quitte le live : sans aucun signe de lui (arrivée, commentaire,
         /// tapotement, don, partage) pendant N minutes, on considère qu'il est parti et il perd sa toupie. 0 = jamais.
         /// </summary>
-        public float leaveAfterMinutes = 10f;
+        public float leaveAfterMinutes = 1f;
         /// <summary>Un spectateur qui s'abonne pendant le live entre dans l'arène (gratuit).</summary>
         public bool followJoins = true;
         /// <summary>Un spectateur qui arrive dans le live obtient sa toupie tout de suite (sans écrire !join).</summary>
@@ -82,9 +83,9 @@ namespace SpinArena
     [Serializable]
     public sealed class TuningSettings
     {
-        public float damage = 1f;          // dégâts des chocs
+        public float damage = 0.75f;       // dégâts des chocs (parties plus longues)
         public float knockback = 1f;       // force des projections
-        public float spinDecay = 1f;       // perte d'énergie naturelle
+        public float spinDecay = 0.6f;     // perte d'énergie naturelle (parties plus longues)
         public float speed = 1f;           // vitesse de déplacement
         public float topScale = 2.7f;      // taille de base des toupies (grosses, photo bien visible)
         public float maxSize = 1.8f;       // taille maximale (tapotements, cadeaux)
@@ -176,7 +177,7 @@ namespace SpinArena
         public SoundSettings audio = new SoundSettings();
         public ShowSettings show = new ShowSettings();
         /// <summary>Version des réglages enregistrés (2 = toupies illimitées par défaut).</summary>
-        public int configVersion = 6;
+        public int configVersion = 7;
 
         public static GameConfig Current => GameManager.Instance != null ? GameManager.Instance.Config : _fallback ?? (_fallback = new GameConfig());
         static GameConfig _fallback;
@@ -244,6 +245,18 @@ namespace SpinArena
                     if (d != null) { r.effect = d.effect; r.tier = d.tier; r.perUserCooldown = d.perUserCooldown; r.coins = d.coins; }
                 }
                 cfg.configVersion = 6;
+            }
+            // Version 7 : arène fermée (aucune chute), fin seulement au dernier survivant, parties plus longues,
+            // toupie retirée après 1 minute sans activité.
+            if (cfg.configVersion < 7)
+            {
+                cfg.arena.pocketCount = 0; cfg.arena.ringOuts = false;
+                cfg.round.endOnlyWithOneLeft = true;
+                cfg.round.maxFightSeconds = Mathf.Max(cfg.round.maxFightSeconds, 300f);
+                cfg.tuning.spinDecay = Mathf.Min(cfg.tuning.spinDecay, 0.6f);
+                cfg.tuning.damage = Mathf.Min(cfg.tuning.damage, 0.75f);
+                cfg.live.leaveAfterMinutes = 1f; cfg.live.inactivityMinutes = 1f;
+                cfg.configVersion = 7;
             }
             // 0 = illimité ; sinon au moins 2 joueurs.
             cfg.round.maxParticipants = cfg.round.maxParticipants <= 0 ? 0 : Mathf.Max(2, cfg.round.maxParticipants);

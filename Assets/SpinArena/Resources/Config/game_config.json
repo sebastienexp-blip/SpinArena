@@ -4,11 +4,12 @@
         "minParticipants": 2,
         "lobbySeconds": 25.0,
         "countdownSeconds": 5.0,
-        "maxFightSeconds": 150.0,
+        "maxFightSeconds": 300.0,
         "victorySeconds": 9.0,
         "lateJoinSeconds": 10.0,
         "suddenDeathDecay": 4.0,
-        "autoRejoin": true
+        "autoRejoin": true,
+        "endOnlyWithOneLeft": true
     },
     "commands": {
         "infoCooldown": 20.0,
@@ -237,16 +238,17 @@
         "radius": 16.0,
         "rimHeight": 2.4,
         "wallHeight": 0.7,
-        "pocketCount": 4,
+        "pocketCount": 0,
         "pocketDegrees": 22.0,
-        "theme": "electric"
+        "theme": "electric",
+        "ringOuts": false
     },
     "live": {
         "connector": "bridge",
         "bridgeUrl": "ws://127.0.0.1:8787/",
         "demoSpectators": 30,
-        "inactivityMinutes": 15.0,
-        "leaveAfterMinutes": 10.0
+        "inactivityMinutes": 1.0,
+        "leaveAfterMinutes": 1.0
     },
     "effects": {
         "collectiveSpinPerGift": 0.015,
@@ -274,9 +276,9 @@
         "tapsEnabled": true
     },
     "tuning": {
-        "damage": 1.0,
+        "damage": 0.75,
         "knockback": 1.0,
-        "spinDecay": 1.0,
+        "spinDecay": 0.6,
         "speed": 1.0,
         "topScale": 2.7,
         "maxSize": 1.8,

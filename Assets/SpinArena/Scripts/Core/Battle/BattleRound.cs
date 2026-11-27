@@ -27,7 +27,7 @@ namespace SpinArena.Core.Battle
         public int minParticipants = 2;
         public float lobbySeconds = 25f;
         public float countdownSeconds = 5f;
-        public float maxFightSeconds = 150f;
+        public float maxFightSeconds = 300f;
         public float victorySeconds = 9f;
         /// <summary>Pendant les N premières secondes du combat, un nouveau joueur entre encore directement.</summary>
         public float lateJoinSeconds = 10f;
@@ -39,6 +39,8 @@ namespace SpinArena.Core.Battle
         public float suddenDeathDecay = 4f;
         /// <summary>Les participants d'une manche sont réinscrits automatiquement à la suivante.</summary>
         public bool autoRejoin = true;
+        /// <summary>La manche ne se termine que lorsqu'il ne reste qu'une toupie (pas de départage au temps).</summary>
+        public bool endOnlyWithOneLeft = true;
     }
 
     public sealed class Participant
@@ -210,13 +212,13 @@ namespace SpinArena.Core.Battle
             switch (Phase)
             {
                 case RoundPhase.Lobby:
-                    if (PhaseTime >= Settings.lobbySeconds)
-                    {
-                        if (_participants.Count >= Settings.minParticipants) SetPhase(RoundPhase.Countdown);
-                        else PhaseTime = Settings.lobbySeconds; // on attend des joueurs, le chrono reste à 0
-                    }
+                    // Le décompte ne tourne qu'à partir de 2 toupies ; s'il en reste moins, il repart de zéro.
+                    if (_participants.Count < Settings.minParticipants) PhaseTime = 0f;
+                    else if (PhaseTime >= Settings.lobbySeconds) SetPhase(RoundPhase.Countdown);
                     break;
                 case RoundPhase.Countdown:
+                    // Des joueurs sont partis : on revient à l'attente jusqu'à avoir de nouveau 2 toupies.
+                    if (_participants.Count < Settings.minParticipants) { SetPhase(RoundPhase.Lobby); break; }
                     if (PhaseTime >= Settings.countdownSeconds) SetPhase(RoundPhase.Fighting);
                     break;
                 case RoundPhase.Fighting:
@@ -227,7 +229,7 @@ namespace SpinArena.Core.Battle
                         SuddenDeathStarted?.Invoke();
                     }
                     // Garde-fou : la mort subite ne peut pas durer indéfiniment.
-                    if (SuddenDeath && PhaseTime >= Settings.maxFightSeconds + 60f) DecideByStanding();
+                    if (!Settings.endOnlyWithOneLeft && SuddenDeath && PhaseTime >= Settings.maxFightSeconds + 60f) DecideByStanding();
                     break;
                 case RoundPhase.Victory:
                     if (PhaseTime >= Settings.victorySeconds) StartNewRound();

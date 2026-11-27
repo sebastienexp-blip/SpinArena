@@ -36,6 +36,7 @@ static class Program
         Test("manche", Round);
         Test("manche-temps", RoundTimeout);
         Test("manche-tardifs", RoundLateJoin);
+        Test("dernier-survivant", LastOneStanding);
         Test("commandes", Commands);
         Test("anti-abus", RateLimit);
         Test("cadeaux-séries", GiftStreaks);
@@ -159,6 +160,7 @@ static class Program
     static void RoundTimeout()
     {
         var r = NewRound(4, out var ids);
+        r.Settings.endOnlyWithOneLeft = false;
         r.StandingProvider = () => new[] { "p2", "p0", "p3", "p1" };
         bool sd = false; string winner = null;
         r.SuddenDeathStarted += () => sd = true;
@@ -169,6 +171,30 @@ static class Program
         r.Tick(61f);
         Check(r.Phase == RoundPhase.Victory && winner == "p2", "départage par le classement après la mort subite");
         Check(r.Get("p1").placement == 4 && r.Get("p0").placement == 2, "placements du départage");
+    }
+
+    static void LastOneStanding()
+    {
+        // Par défaut : pas de fin au temps, seulement quand il ne reste qu'une toupie.
+        var r = NewRound(3, out var ids);
+        r.Tick(5.01f); r.Tick(3.01f);
+        r.Tick(500f);
+        Check(r.Phase == RoundPhase.Fighting && r.SuddenDeath, "pas de fin au temps : on continue (mort subite)");
+        r.Eliminate("p0", EliminationReason.OutOfSpin);
+        Check(r.Phase == RoundPhase.Fighting, "deux toupies : on continue");
+        r.Eliminate("p1", EliminationReason.OutOfSpin);
+        Check(r.Phase == RoundPhase.Victory, "une seule toupie : fin de manche");
+        // Le décompte attend 2 toupies et repart si l'une s'en va.
+        var w = new BattleRound(new RoundSettings { lobbySeconds = 5, countdownSeconds = 3, minParticipants = 2 });
+        w.RequestJoin("a");
+        w.Tick(30f);
+        Check(w.Phase == RoundPhase.Lobby && w.PhaseTime == 0f, "une seule toupie : le décompte attend");
+        w.RequestJoin("b");
+        w.Tick(5.01f);
+        Check(w.Phase == RoundPhase.Countdown, "deux toupies : le décompte démarre");
+        w.Withdraw("b");
+        w.Tick(0.1f);
+        Check(w.Phase == RoundPhase.Lobby, "une toupie part pendant le décompte : retour à l'attente");
     }
 
     static void RoundLateJoin()

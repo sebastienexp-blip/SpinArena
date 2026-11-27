@@ -185,6 +185,39 @@ namespace SpinArena.Battle
             if (low != TopController.LowDetail) { TopController.LowDetail = low; GameManager.Instance?.ApplyDisplay(); }
         }
 
+        /// <summary>Hors de la plateforme : dehors, tombée sous le sol, ou au-delà du muret.</summary>
+        bool OffPlatform(Vector3 p)
+        {
+            if (_arena.IsOut(p)) return true;
+            float r = new Vector2(p.x, p.z).magnitude;
+            return p.y < _arena.SurfaceHeight(Mathf.Min(r, _arena.Radius)) - 1.5f || r > _arena.Radius + 0.9f * _arena.Scale;
+        }
+
+        /// <summary>Remet une toupie sur la plateforme, vers l'intérieur, sans perte.</summary>
+        void PutBackOnPlatform(TopController t)
+        {
+            Vector3 p = t.transform.position;
+            Vector2 flat = new Vector2(p.x, p.z);
+            Vector2 dir = flat.sqrMagnitude > 0.01f ? flat.normalized : Random.insideUnitCircle.normalized;
+            float r = _arena.Radius * 0.6f;
+            t.Body.position = new Vector3(dir.x * r, _arena.SurfaceHeight(r) + 0.3f, dir.y * r);
+            SpinArena.Util.Compat.SetVelocity(t.Body, new Vector3(-dir.x, 0f, -dir.y) * 2f);
+            VfxManager.Instance.JoinBeam(t.Body.position, t.Glow);
+        }
+
+        /// <summary>Contrôle de sécurité au lancement : chaque toupie inscrite est bien posée sur la plateforme.</summary>
+        void EnsureStagedOnPlatform()
+        {
+            foreach (var t in _tops.Values)
+            {
+                if (t.State != TopState.Staged && t.State != TopState.Idle) continue;
+                Vector3 p = t.transform.position;
+                float r = new Vector2(p.x, p.z).magnitude;
+                bool bad = r > _arena.Radius * 0.9f || Mathf.Abs(p.y - _arena.SurfaceHeight(Mathf.Min(r, _arena.Radius))) > 0.6f;
+                if (bad) { LayoutStaged(); return; }
+            }
+        }
+
         /// <summary>Le joueur a quitté le live avant le combat : sa toupie disparaît.</summary>
         void OnWithdrawn(string playerId)
         {
@@ -199,11 +232,20 @@ namespace SpinArena.Battle
 
         // ------------------------------------------------------------------ phases
 
+        RoundPhase _prevPhase = RoundPhase.Lobby;
+
         void OnPhase(RoundPhase phase)
         {
             _lastCountdownSecond = -1;
+            var prev = _prevPhase;
+            _prevPhase = phase;
             switch (phase)
             {
+                case RoundPhase.Lobby when prev == RoundPhase.Countdown:
+                    // Retour à l'attente (moins de 2 toupies) : on garde les toupies inscrites, bien rangées.
+                    LayoutStaged();
+                    _hud.Banner("EN ATTENTE", "Il faut au moins 2 toupies", 2f, new Color(0.6f, 0.95f, 1f));
+                    break;
                 case RoundPhase.Lobby:
                     _hud.HideWinner();
                     CameraDirector.Instance.Focus(null, 0f);
@@ -214,8 +256,10 @@ namespace SpinArena.Battle
                     break;
                 case RoundPhase.Countdown:
                     _countdownAnnounced = false;
+                    EnsureStagedOnPlatform();
                     break;
                 case RoundPhase.Fighting:
+                    EnsureStagedOnPlatform();
                     foreach (var t in _tops.Values) t.Launch(_cfg.tuning.launchPower);
                     AudioManager.Play("go", 1f, 0.5f, 0f);
                     AudioManager.Play("launch", 0.8f, 0.5f, 0f);
@@ -258,7 +302,12 @@ namespace SpinArena.Battle
                     var t = _active[i];
                     if (t.State != TopState.Fighting) continue;
                     t.SetDecayFactor(decay);
-                    if (_arena.IsOut(t.transform.position)) Round.Eliminate(t.PlayerId, EliminationReason.RingOut, t.LastAttackerId);
+                    if (OffPlatform(t.transform.position))
+                    {
+                        // Arène fermée : une toupie qui sortirait (bug physique, projection extrême) revient sur la plateforme.
+                        if (_cfg.arena.ringOuts && _arena.IsOut(t.transform.position)) Round.Eliminate(t.PlayerId, EliminationReason.RingOut, t.LastAttackerId);
+                        else if (!_cfg.arena.ringOuts) PutBackOnPlatform(t);
+                    }
                     else if (t.Spin <= 0f) Round.Eliminate(t.PlayerId, EliminationReason.OutOfSpin, t.LastAttackerId);
                 }
                 int alive = Round.AliveCount;
