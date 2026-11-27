@@ -426,7 +426,7 @@ namespace SpinArena.VFX
                 float s = Mathf.Repeat(u * 5f + w * 2.2f + Mathf.PerlinNoise(u * 6f, w * 6f) * 0.8f, 1f);
                 float band = Mathf.Pow(Mathf.Clamp01(1f - Mathf.Abs(s - 0.5f) * 2.4f), 1.6f);
                 float noise = Mathf.PerlinNoise(u * 18f + 3f, w * 9f) * 0.5f + Mathf.PerlinNoise(u * 40f, w * 30f) * 0.3f;
-                float a = Mathf.Clamp01(band * 0.75f + noise * 0.45f - 0.15f);
+                float a = Mathf.Clamp01(band * 0.85f + noise * 0.5f - 0.02f);
                 byte lum = (byte)(200 + noise * 55f);
                 px[y * n + x] = new Color32(lum, lum, lum, (byte)(a * 255f));
             }
