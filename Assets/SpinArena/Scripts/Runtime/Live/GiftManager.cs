@@ -48,6 +48,7 @@ namespace SpinArena.Live
             // Un spectateur qui envoie un cadeau entre dans l'arène s'il n'y est pas encore (comme avec !join).
             if (GameConfig.Current.effects.giftJoins && _br.TopOf(e.user.Key) == null) _br.Join(e.user);
             GiftIcons.Remember(e.giftName, e.giftImageUrl);
+            GiftPrices.Learn(e.giftName, e.diamondCount);
             int added = _proc.Receive(e, now);
             if (added > 0)
             {
@@ -169,6 +170,23 @@ namespace SpinArena.Live
     }
 
     /// <summary>Images des cadeaux : celles fournies avec le jeu, sinon l'image envoyée par TikTok pendant le live.</summary>
+    /// <summary>Prix réels des cadeaux vus pendant le live (pièces), pour ranger la liste du moins cher au plus cher.</summary>
+    public static class GiftPrices
+    {
+        static readonly Dictionary<string, int> Prices = new Dictionary<string, int>();
+        public static int Version { get; private set; }
+        static string Key(string name) { var k = GiftIcons.Slug(name); return k == "donut" ? "doughnut" : k; }
+        public static void Learn(string name, int coins)
+        {
+            if (string.IsNullOrEmpty(name) || coins <= 0) return;
+            string k = Key(name);
+            if (Prices.TryGetValue(k, out int old) && old == coins) return;
+            Prices[k] = coins;
+            Version++;
+        }
+        public static int Of(string name) => !string.IsNullOrEmpty(name) && Prices.TryGetValue(Key(name), out int c) ? c : 0;
+    }
+
     public static class GiftIcons
     {
         static readonly Dictionary<string, Texture2D> Cache = new Dictionary<string, Texture2D>();

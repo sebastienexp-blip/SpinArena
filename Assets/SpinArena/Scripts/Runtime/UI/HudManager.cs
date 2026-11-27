@@ -122,6 +122,7 @@ namespace SpinArena.UI
         readonly List<GiftRow> _giftRows = new List<GiftRow>();
         readonly List<(Texture icon, string slug, string action)> _giftList = new List<(Texture, string, string)>();
         RectTransform _giftPanel;
+        int _pricesVersion;
         CanvasGroup _giftPanelGroup;
         int _giftPage, _giftVersion = -1;
         float _giftPageTimer, _giftCountTimer;
@@ -160,7 +161,8 @@ namespace SpinArena.UI
         {
             _giftList.Clear();
             var seen = new HashSet<string>();
-            foreach (var r in GameConfig.Current.gifts.rules)
+            // Du cadeau le moins cher au plus cher.
+            foreach (var r in GiftSettings.ByPrice(GameConfig.Current.gifts.rules, Live.GiftPrices.Of))
             {
                 if (string.IsNullOrEmpty(r.giftName)) continue;
                 var icon = Live.GiftIcons.Get(r.giftName);
@@ -424,7 +426,8 @@ namespace SpinArena.UI
             var rows = new List<(Texture icon, string name, string action)>();
             rows.Add((null, "Tapotements", "+" + (cfg.effects.tapGrowth * 100f).ToString("0.#") + " % taille, vitesse"));
             var seen = new HashSet<string>();
-            foreach (var r in cfg.gifts.rules)
+            // Du cadeau le moins cher au plus cher.
+            foreach (var r in GiftSettings.ByPrice(cfg.gifts.rules, Live.GiftPrices.Of))
             {
                 if (string.IsNullOrEmpty(r.giftName)) continue;
                 var icon = Live.GiftIcons.Get(r.giftName);
@@ -592,6 +595,8 @@ namespace SpinArena.UI
             _hintPanel.gameObject.SetActive(disp.showHint && !_portrait);
             _status.gameObject.SetActive(disp.showStatus && !_portrait);
             UpdateGiftPanel(dt);
+            // Un prix réel vient d'être vu en direct : la liste est reclassée.
+            if (Live.GiftPrices.Version != _pricesVersion) { _pricesVersion = Live.GiftPrices.Version; RefreshLegend(); }
             _banner.transform.parent.gameObject.SetActive(disp.showBanners);
             if (!disp.showGiftPopups) { _giftQueue.Clear(); _giftUntil = 0f; }
             if (!disp.showJoinCards) { _joinQueue.Clear(); _joinUntil = 0f; }

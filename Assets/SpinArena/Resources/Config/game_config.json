@@ -25,147 +25,168 @@
                 "minDiamonds": 0,
                 "tier": 0,
                 "effect": "heal_small",
-                "perUserCooldown": 0.0
+                "perUserCooldown": 0.0,
+                "coins": 1
             },
             {
                 "giftName": "TikTok",
                 "minDiamonds": 0,
                 "tier": 0,
                 "effect": "turbo",
-                "perUserCooldown": 1.0
+                "perUserCooldown": 1.0,
+                "coins": 1
             },
             {
                 "giftName": "Weights",
                 "minDiamonds": 0,
                 "tier": 0,
                 "effect": "heavy",
-                "perUserCooldown": 2.0
+                "perUserCooldown": 2.0,
+                "coins": 1
             },
             {
                 "giftName": "Ice Cream Cone",
                 "minDiamonds": 0,
                 "tier": 0,
                 "effect": "freeze",
-                "perUserCooldown": 2.0
+                "perUserCooldown": 2.0,
+                "coins": 1
             },
             {
                 "giftName": "GG",
                 "minDiamonds": 0,
                 "tier": 0,
                 "effect": "grow",
-                "perUserCooldown": 0.0
+                "perUserCooldown": 0.0,
+                "coins": 1
             },
             {
                 "giftName": "Mini Speaker",
                 "minDiamonds": 0,
                 "tier": 0,
                 "effect": "sound_wave",
-                "perUserCooldown": 1.0
+                "perUserCooldown": 1.0,
+                "coins": 1
             },
             {
                 "giftName": "Football",
                 "minDiamonds": 0,
                 "tier": 0,
                 "effect": "kick",
-                "perUserCooldown": 1.0
+                "perUserCooldown": 1.0,
+                "coins": 1
             },
             {
                 "giftName": "Heart Me",
                 "minDiamonds": 0,
                 "tier": 0,
                 "effect": "wheel",
-                "perUserCooldown": 0.0
+                "perUserCooldown": 0.0,
+                "coins": 1
             },
             {
                 "giftName": "Finger Heart",
                 "minDiamonds": 0,
                 "tier": 1,
                 "effect": "heal",
-                "perUserCooldown": 0.0
+                "perUserCooldown": 0.0,
+                "coins": 5
             },
             {
                 "giftName": "Panda",
                 "minDiamonds": 0,
                 "tier": 1,
                 "effect": "shield",
-                "perUserCooldown": 2.0
+                "perUserCooldown": 2.0,
+                "coins": 5
             },
             {
                 "giftName": "Mic",
                 "minDiamonds": 0,
                 "tier": 1,
                 "effect": "shockwave",
-                "perUserCooldown": 2.0
+                "perUserCooldown": 2.0,
+                "coins": 5
             },
             {
                 "giftName": "Hand Wave",
                 "minDiamonds": 0,
                 "tier": 1,
                 "effect": "lightning",
-                "perUserCooldown": 3.0
+                "perUserCooldown": 3.0,
+                "coins": 9
             },
             {
                 "giftName": "Perfume",
                 "minDiamonds": 0,
                 "tier": 1,
                 "effect": "regen",
-                "perUserCooldown": 4.0
+                "perUserCooldown": 4.0,
+                "coins": 20
             },
             {
                 "giftName": "Doughnut",
                 "minDiamonds": 0,
                 "tier": 1,
                 "effect": "power_up",
-                "perUserCooldown": 4.0
+                "perUserCooldown": 4.0,
+                "coins": 30
             },
             {
                 "giftName": "Donut",
                 "minDiamonds": 0,
                 "tier": 1,
                 "effect": "power_up",
-                "perUserCooldown": 4.0
+                "perUserCooldown": 4.0,
+                "coins": 30
             },
             {
                 "giftName": "Cap",
                 "minDiamonds": 0,
                 "tier": 1,
                 "effect": "special_attack",
-                "perUserCooldown": 6.0
+                "perUserCooldown": 6.0,
+                "coins": 99
             },
             {
                 "giftName": "Hand Hearts",
                 "minDiamonds": 0,
                 "tier": 2,
                 "effect": "super_heal",
-                "perUserCooldown": 6.0
+                "perUserCooldown": 6.0,
+                "coins": 100
             },
             {
                 "giftName": "Sunglasses",
                 "minDiamonds": 0,
                 "tier": 2,
                 "effect": "barrage",
-                "perUserCooldown": 10.0
+                "perUserCooldown": 10.0,
+                "coins": 199
             },
             {
                 "giftName": "TikTok Crown",
                 "minDiamonds": 0,
                 "tier": 2,
                 "effect": "royal",
-                "perUserCooldown": 10.0
+                "perUserCooldown": 10.0,
+                "coins": 299
             },
             {
                 "giftName": "Money Gun",
                 "minDiamonds": 0,
                 "tier": 2,
                 "effect": "tornado",
-                "perUserCooldown": 60.0
+                "perUserCooldown": 60.0,
+                "coins": 500
             },
             {
                 "giftName": "Galaxy",
                 "minDiamonds": 0,
                 "tier": 3,
                 "effect": "meteor_storm",
-                "perUserCooldown": 60.0
+                "perUserCooldown": 60.0,
+                "coins": 1000
             },
             {
                 "giftName": "",

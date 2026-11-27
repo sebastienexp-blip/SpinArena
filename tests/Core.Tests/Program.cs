@@ -48,6 +48,7 @@ static class Program
         Test("retour-en-jeu", Revive);
         Test("sans-limite-et-départs", NoLimitAndLeave);
         Test("donateurs", Donors);
+        Test("cadeaux-par-prix", GiftsByPrice);
 
         Console.WriteLine($"Tests du noyau : {_pass} réussis, {_fail} échoués");
         foreach (var f in Failures) Console.WriteLine("  ÉCHEC : " + f);
@@ -366,6 +367,23 @@ static class Program
         Check(!r.Revive("p1"), "une seule fois par manche");
         r.Eliminate("p2", EliminationReason.OutOfSpin);
         Check(r.Phase == RoundPhase.Victory && r.WinnerId == "p0" && r.Get("p1").placement == 3, "classement après un retour");
+    }
+
+    static void GiftsByPrice()
+    {
+        var def = SpinArena.Core.Live.GiftSettings.CreateDefault();
+        var sorted = SpinArena.Core.Live.GiftSettings.ByPrice(def.rules);
+        bool ascending = true;
+        for (int i = 1; i < sorted.Count; i++) if (sorted[i].coins < sorted[i - 1].coins) ascending = false;
+        Check(ascending, "liste rangée du moins cher au plus cher");
+        Check(sorted[0].giftName == "Rose" && sorted[sorted.Count - 1].giftName == "Galaxy", "Rose d'abord, Galaxy en dernier");
+        Check(sorted.TrueForAll(r => !string.IsNullOrEmpty(r.giftName)), "règles par valeur exclues");
+        // Un prix vu en direct passe avant le prix par défaut.
+        var live = SpinArena.Core.Live.GiftSettings.ByPrice(def.rules, n => n == "Rose" ? 5000 : 0);
+        Check(live[live.Count - 1].giftName == "Rose", "prix réel prioritaire");
+        // Anciens réglages sans prix : prix par défaut retrouvés par le nom.
+        var old = new System.Collections.Generic.List<SpinArena.Core.Live.GiftRule> { new SpinArena.Core.Live.GiftRule { giftName = "Galaxy" }, new SpinArena.Core.Live.GiftRule { giftName = "Mic" } };
+        Check(SpinArena.Core.Live.GiftSettings.ByPrice(old)[0].giftName == "Mic", "prix par défaut si absent");
     }
 
     static void Donors()

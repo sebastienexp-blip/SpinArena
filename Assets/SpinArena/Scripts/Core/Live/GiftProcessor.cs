@@ -25,6 +25,8 @@ namespace SpinArena.Core.Live
         public string effect;
         /// <summary>Délai minimal entre deux activations de cette règle pour un même spectateur (s).</summary>
         public float perUserCooldown = 3f;
+        /// <summary>Prix du cadeau en pièces TikTok (sert seulement à ranger la liste du moins cher au plus cher).</summary>
+        public int coins;
     }
 
     [Serializable]
@@ -41,32 +43,61 @@ namespace SpinArena.Core.Live
         public int maxActivationsPerGift = 10;
         public int historySize = 300;
 
+        /// <summary>Prix par défaut d'un cadeau connu (0 si inconnu).</summary>
+        public static int DefaultCoins(string giftName)
+        {
+            foreach (var r in CreateDefault().rules)
+                if (!string.IsNullOrEmpty(r.giftName) && string.Equals(r.giftName, giftName, StringComparison.OrdinalIgnoreCase)) return r.coins;
+            return 0;
+        }
+
+        /// <summary>
+        /// Règles nommées rangées du cadeau le moins cher au plus cher. <paramref name="livePrice"/> donne le prix vu
+        /// en direct (prioritaire, peut renvoyer 0 si inconnu) ; à prix égal, l'ordre de la configuration est gardé.
+        /// </summary>
+        public static List<GiftRule> ByPrice(IEnumerable<GiftRule> rules, Func<string, int> livePrice = null)
+        {
+            var list = new List<(GiftRule r, int price, int order)>();
+            int i = 0;
+            foreach (var r in rules)
+            {
+                if (r == null || string.IsNullOrEmpty(r.giftName)) continue;
+                int live = livePrice != null ? livePrice(r.giftName) : 0;
+                int price = live > 0 ? live : r.coins > 0 ? r.coins : DefaultCoins(r.giftName);
+                list.Add((r, price <= 0 ? int.MaxValue : price, i++));
+            }
+            list.Sort((a, b) => a.price != b.price ? a.price.CompareTo(b.price) : a.order.CompareTo(b.order));
+            var res = new List<GiftRule>(list.Count);
+            foreach (var x in list) res.Add(x.r);
+            return res;
+        }
+
         public static GiftSettings CreateDefault() => new GiftSettings
         {
             rules = new List<GiftRule>
             {
                 // Cadeaux connus : chacun a son action (images dans Resources/Gifts).
-                new GiftRule { giftName = "Rose", tier = (GiftTier)0, effect = "heal_small", perUserCooldown = 0f },
-                new GiftRule { giftName = "TikTok", tier = (GiftTier)0, effect = "turbo", perUserCooldown = 1f },
-                new GiftRule { giftName = "Weights", tier = (GiftTier)0, effect = "heavy", perUserCooldown = 2f },
-                new GiftRule { giftName = "Ice Cream Cone", tier = (GiftTier)0, effect = "freeze", perUserCooldown = 2f },
-                new GiftRule { giftName = "GG", tier = (GiftTier)0, effect = "grow", perUserCooldown = 0f },
-                new GiftRule { giftName = "Mini Speaker", tier = (GiftTier)0, effect = "sound_wave", perUserCooldown = 1f },
-                new GiftRule { giftName = "Football", tier = (GiftTier)0, effect = "kick", perUserCooldown = 1f },
-                new GiftRule { giftName = "Heart Me", tier = (GiftTier)0, effect = "wheel", perUserCooldown = 0f },
-                new GiftRule { giftName = "Finger Heart", tier = (GiftTier)1, effect = "heal", perUserCooldown = 0f },
-                new GiftRule { giftName = "Panda", tier = (GiftTier)1, effect = "shield", perUserCooldown = 2f },
-                new GiftRule { giftName = "Mic", tier = (GiftTier)1, effect = "shockwave", perUserCooldown = 2f },
-                new GiftRule { giftName = "Hand Wave", tier = (GiftTier)1, effect = "lightning", perUserCooldown = 3f },
-                new GiftRule { giftName = "Perfume", tier = (GiftTier)1, effect = "regen", perUserCooldown = 4f },
-                new GiftRule { giftName = "Doughnut", tier = (GiftTier)1, effect = "power_up", perUserCooldown = 4f },
-                new GiftRule { giftName = "Donut", tier = (GiftTier)1, effect = "power_up", perUserCooldown = 4f },
-                new GiftRule { giftName = "Cap", tier = (GiftTier)1, effect = "special_attack", perUserCooldown = 6f },
-                new GiftRule { giftName = "Hand Hearts", tier = (GiftTier)2, effect = "super_heal", perUserCooldown = 6f },
-                new GiftRule { giftName = "Sunglasses", tier = (GiftTier)2, effect = "barrage", perUserCooldown = 10f },
-                new GiftRule { giftName = "TikTok Crown", tier = (GiftTier)2, effect = "royal", perUserCooldown = 10f },
-                new GiftRule { giftName = "Money Gun", tier = (GiftTier)2, effect = "tornado", perUserCooldown = 60f },
-                new GiftRule { giftName = "Galaxy", tier = (GiftTier)3, effect = "meteor_storm", perUserCooldown = 60f },
+                new GiftRule { giftName = "Rose", tier = (GiftTier)0, effect = "heal_small", perUserCooldown = 0f , coins = 1 },
+                new GiftRule { giftName = "TikTok", tier = (GiftTier)0, effect = "turbo", perUserCooldown = 1f , coins = 1 },
+                new GiftRule { giftName = "Weights", tier = (GiftTier)0, effect = "heavy", perUserCooldown = 2f , coins = 1 },
+                new GiftRule { giftName = "Ice Cream Cone", tier = (GiftTier)0, effect = "freeze", perUserCooldown = 2f , coins = 1 },
+                new GiftRule { giftName = "GG", tier = (GiftTier)0, effect = "grow", perUserCooldown = 0f , coins = 1 },
+                new GiftRule { giftName = "Mini Speaker", tier = (GiftTier)0, effect = "sound_wave", perUserCooldown = 1f , coins = 1 },
+                new GiftRule { giftName = "Football", tier = (GiftTier)0, effect = "kick", perUserCooldown = 1f , coins = 1 },
+                new GiftRule { giftName = "Heart Me", tier = (GiftTier)0, effect = "wheel", perUserCooldown = 0f , coins = 1 },
+                new GiftRule { giftName = "Finger Heart", tier = (GiftTier)1, effect = "heal", perUserCooldown = 0f , coins = 5 },
+                new GiftRule { giftName = "Panda", tier = (GiftTier)1, effect = "shield", perUserCooldown = 2f , coins = 5 },
+                new GiftRule { giftName = "Mic", tier = (GiftTier)1, effect = "shockwave", perUserCooldown = 2f , coins = 5 },
+                new GiftRule { giftName = "Hand Wave", tier = (GiftTier)1, effect = "lightning", perUserCooldown = 3f , coins = 9 },
+                new GiftRule { giftName = "Perfume", tier = (GiftTier)1, effect = "regen", perUserCooldown = 4f , coins = 20 },
+                new GiftRule { giftName = "Doughnut", tier = (GiftTier)1, effect = "power_up", perUserCooldown = 4f , coins = 30 },
+                new GiftRule { giftName = "Donut", tier = (GiftTier)1, effect = "power_up", perUserCooldown = 4f , coins = 30 },
+                new GiftRule { giftName = "Cap", tier = (GiftTier)1, effect = "special_attack", perUserCooldown = 6f , coins = 99 },
+                new GiftRule { giftName = "Hand Hearts", tier = (GiftTier)2, effect = "super_heal", perUserCooldown = 6f , coins = 100 },
+                new GiftRule { giftName = "Sunglasses", tier = (GiftTier)2, effect = "barrage", perUserCooldown = 10f , coins = 199 },
+                new GiftRule { giftName = "TikTok Crown", tier = (GiftTier)2, effect = "royal", perUserCooldown = 10f , coins = 299 },
+                new GiftRule { giftName = "Money Gun", tier = (GiftTier)2, effect = "tornado", perUserCooldown = 60f , coins = 500 },
+                new GiftRule { giftName = "Galaxy", tier = (GiftTier)3, effect = "meteor_storm", perUserCooldown = 60f , coins = 1000 },
                 new GiftRule { minDiamonds = 1000, tier = (GiftTier)3, effect = "meteor_storm", perUserCooldown = 60f },
                 new GiftRule { minDiamonds = 100, tier = (GiftTier)2, effect = "special_attack", perUserCooldown = 10f },
                 new GiftRule { minDiamonds = 5, tier = (GiftTier)1, effect = "power_up", perUserCooldown = 4f },

@@ -176,7 +176,7 @@ namespace SpinArena
         public SoundSettings audio = new SoundSettings();
         public ShowSettings show = new ShowSettings();
         /// <summary>Version des réglages enregistrés (2 = toupies illimitées par défaut).</summary>
-        public int configVersion = 4;
+        public int configVersion = 5;
 
         public static GameConfig Current => GameManager.Instance != null ? GameManager.Instance.Config : _fallback ?? (_fallback = new GameConfig());
         static GameConfig _fallback;
@@ -226,6 +226,12 @@ namespace SpinArena
             {
                 foreach (var r in cfg.gifts.rules) if (r.giftName == "Hand Wave" && r.effect == "blast") r.effect = "lightning";
                 cfg.configVersion = 4;
+            }
+            // Version 5 : prix des cadeaux (pour ranger la liste du moins cher au plus cher).
+            if (cfg.configVersion < 5)
+            {
+                foreach (var r in cfg.gifts.rules) if (r.coins <= 0 && !string.IsNullOrEmpty(r.giftName)) r.coins = GiftSettings.DefaultCoins(r.giftName);
+                cfg.configVersion = 5;
             }
             // 0 = illimité ; sinon au moins 2 joueurs.
             cfg.round.maxParticipants = cfg.round.maxParticipants <= 0 ? 0 : Mathf.Max(2, cfg.round.maxParticipants);
