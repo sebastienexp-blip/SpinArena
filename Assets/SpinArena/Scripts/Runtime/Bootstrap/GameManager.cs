@@ -74,6 +74,7 @@ namespace SpinArena
             Arena.ScaleChanged += k => cam.Configure(Arena.Radius);
             RenderingSetup.Apply(cam.Cam);
             Child<VfxManager>("VFX");
+            Child<SpectacleFx>("SFX");
             Child<AvatarCache>("Avatars");
             Child<Audio.AudioManager>("Audio");
             Hud = Child<HudManager>("UI");

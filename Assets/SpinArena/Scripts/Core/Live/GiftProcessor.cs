@@ -57,7 +57,7 @@ namespace SpinArena.Core.Live
                 new GiftRule { giftName = "Finger Heart", tier = (GiftTier)1, effect = "heal", perUserCooldown = 0f },
                 new GiftRule { giftName = "Panda", tier = (GiftTier)1, effect = "shield", perUserCooldown = 2f },
                 new GiftRule { giftName = "Mic", tier = (GiftTier)1, effect = "shockwave", perUserCooldown = 2f },
-                new GiftRule { giftName = "Hand Wave", tier = (GiftTier)1, effect = "blast", perUserCooldown = 3f },
+                new GiftRule { giftName = "Hand Wave", tier = (GiftTier)1, effect = "lightning", perUserCooldown = 3f },
                 new GiftRule { giftName = "Perfume", tier = (GiftTier)1, effect = "regen", perUserCooldown = 4f },
                 new GiftRule { giftName = "Doughnut", tier = (GiftTier)1, effect = "power_up", perUserCooldown = 4f },
                 new GiftRule { giftName = "Donut", tier = (GiftTier)1, effect = "power_up", perUserCooldown = 4f },

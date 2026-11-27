@@ -9,12 +9,12 @@ namespace SpinArena.Core.Live
         public static readonly string[] EffectIds =
         {
             "heal_small", "heal", "super_heal", "regen", "turbo", "rafale", "heavy", "shield", "grow", "royal",
-            "freeze", "kick", "sound_wave", "shockwave", "blast", "power_up", "special_attack", "barrage", "wheel", "meteor_storm", "tornado"
+            "freeze", "kick", "sound_wave", "shockwave", "blast", "power_up", "special_attack", "barrage", "wheel", "meteor_storm", "tornado", "lightning"
         };
         public static readonly string[] EffectNames =
         {
             "Énergie +", "Soin", "Super soin + bouclier", "Régénération", "Turbo", "Rafale", "Toupie blindée", "Bouclier", "Grossit", "Toupie royale",
-            "Gèle un adversaire", "Tir puissant", "Onde sonore", "Onde de choc", "Souffle géant", "Surpuissance", "Capacité spéciale", "Tir de barrage", "Roue au hasard", "Pluie de météores", "Tornade"
+            "Gèle un adversaire", "Tir puissant", "Onde sonore", "Onde de choc", "Souffle géant", "Surpuissance", "Capacité spéciale", "Tir de barrage", "Roue au hasard", "Pluie de météores", "Tornade", "Foudre"
         };
 
 

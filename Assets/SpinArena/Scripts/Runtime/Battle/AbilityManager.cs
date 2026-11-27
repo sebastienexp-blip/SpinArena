@@ -5,6 +5,7 @@ using SpinArena.CameraRig;
 using SpinArena.Core.Elements;
 using SpinArena.Core.Tops;
 using SpinArena.Tops;
+using SpinArena.Rendering;
 using SpinArena.Util;
 using SpinArena.VFX;
 using UnityEngine;
@@ -23,6 +24,7 @@ namespace SpinArena.Battle
         public void Init(BattleRoyaleManager br, EffectSettings fx) { _br = br; _fx = fx; }
 
         static VfxManager Vfx => VfxManager.Instance;
+        static SpectacleFx Sfx => SpectacleFx.Instance;
 
         public bool Attack(TopController t) { if (!Ok(t)) return false; t.BuffAttack(_fx.attackBuff, _fx.attackSeconds); Vfx.Sparkle(t.transform.position, new Color(1f, 0.4f, 0.2f)); return true; }
         public bool Shield(TopController t) { if (!Ok(t)) return false; t.BuffShield(_fx.shieldReduction, _fx.shieldSeconds); Vfx.Shockwave(t.transform.position, new Color(0.5f, 0.8f, 1f)); return true; }
@@ -47,17 +49,21 @@ namespace SpinArena.Battle
                 case Element.Fire: // Explosion de zone.
                     Shockwave(t, _fx.shockwaveRadius * 1.15f, _fx.shockwaveDamage * 1.2f * power, 7f);
                     Vfx.Explosion(p + Vector3.up * 0.3f, c, 0.8f);
+                    Sfx?.FireImpact(p, 0.8f);
                     break;
                 case Element.Ice: // Bouclier de glace + gel des adversaires proches.
                     t.BuffShield(0.45f, 5f);
-                    foreach (var o in Nearest(t, 6, 4.5f)) o.Body.SetVelocity(o.Body.GetVelocity() * 0.3f);
+                    foreach (var o in Nearest(t, 6, 4.5f)) { o.Body.SetVelocity(o.Body.GetVelocity() * 0.3f); Sfx?.Frost(o.transform, 2f); }
                     Vfx.Shockwave(p, c);
+                    Sfx?.Scorch(p, 6f, 5f, new Color(0.75f, 0.92f, 1f, 0.5f));
+                    Sfx?.ElectricSparks(p + Vector3.up * 0.4f, 60, new Color(0.8f, 0.95f, 1f));
                     break;
                 case Element.Nature: // Régénération + racines (immobilise un instant les voisins).
                     t.AddSpin(t.MaxSpin * 0.12f * power);
                     foreach (var o in Nearest(t, 6, 4f)) { o.Body.SetVelocity(Vector3.zero); o.TakeDamage(o.MaxSpin * 0.02f, t.PlayerId); }
                     Vfx.Shockwave(p, c);
                     Vfx.Sparkle(p, c);
+                    Sfx?.Spiral(p, new Color(0.5f, 1f, 0.5f), 40, 1.6f, true);
                     break;
                 case Element.Darkness: // Téléportation derrière la cible + drain d'énergie.
                     var target = Nearest(t, 1, 12f).FirstOrDefault();
@@ -68,6 +74,7 @@ namespace SpinArena.Battle
                         if (behind.Flat().magnitude < limit)
                         {
                             Vfx.Explosion(p + Vector3.up * 0.3f, c, 0.4f);
+                            Sfx?.SmokePuff(p + Vector3.up * 0.5f, 8);
                             t.Body.position = new Vector3(behind.x, Mathf.Max(target.transform.position.y, 0.3f), behind.z);
                         }
                         float drain = target.MaxSpin * 0.08f * power;
@@ -124,8 +131,71 @@ namespace SpinArena.Battle
                 if (arcs++ < 8) Vfx.Lightning(p + Vector3.up * 0.6f, o.transform.position + Vector3.up * 0.5f, src.Glow, 0.3f);
             }
             Vfx.Shockwave(p, src.Glow);
+            Sfx?.DustRing(p, 30, radius * 1.4f);
+            Sfx?.GroundGlow(p, 1.5f, 0.6f, src.Glow, false, radius * 2f / Mathf.Max(1f, GameConfig.Current.tuning.topScale / 1.55f));
+            Sfx?.LightFlash(p + Vector3.up, src.Glow, 12f, radius * 2f, 0.35f);
             AudioManager.Play("shockwave", 0.9f, 0.1f);
             CameraDirector.Instance.Shake(0.1f);
+        }
+
+        // ------------------------------------------------------------------ foudre
+
+        /// <summary>
+        /// Orage : le ciel s'assombrit, puis la foudre s'abat sur plusieurs adversaires l'un après l'autre
+        /// (cercle d'alerte, éclair géant, onde, toupie sonnée). La toupie du donateur n'est jamais touchée.
+        /// </summary>
+        public bool LightningStorm(TopController src, int strikes)
+        {
+            if (_br.Round.Phase != Core.Battle.RoundPhase.Fighting) return false;
+            var targets = _br.Fighting().Where(o => o != src).OrderBy(_ => Random.value).Take(Mathf.Max(1, strikes)).ToList();
+            if (targets.Count == 0) return false;
+            StartCoroutine(StormRoutine(src, targets));
+            return true;
+        }
+
+        IEnumerator StormRoutine(TopController src, System.Collections.Generic.List<TopController> targets)
+        {
+            Sfx?.StormSky(0.8f);
+            AudioManager.Play("thunder", 0.6f, 0.2f, 0.1f);
+            yield return new WaitForSeconds(0.6f);
+            var color = new Color(0.65f, 0.8f, 1f);
+            foreach (var o in targets)
+            {
+                if (o == null || o.State != TopState.Fighting) continue;
+                // Alerte : cercle qui clignote sous la cible.
+                Sfx?.GroundGlow(o.transform.position, 3.5f, 0.55f, new Color(0.6f, 0.85f, 1f, 1f), true, 1.4f);
+                Sfx?.ElectricSparks(o.transform.position + Vector3.up * 0.5f, 12, color);
+                yield return new WaitForSeconds(0.5f);
+                if (o == null || o.State != TopState.Fighting) continue;
+                Vector3 hit = o.transform.position;
+                Vfx.SkyBolt(hit, color);
+                Sfx?.LightningImpact(hit, color);
+                Sfx?.ScreenFlash(0.7f);
+                RenderingSetup.Pulse(0.9f);
+                CameraDirector.Instance.Shake(0.45f);
+                CameraDirector.Instance.Punch(4f);
+                AudioManager.Play("thunder", 1f, 0.05f, 0.12f);
+                // Arcs qui rampent au sol autour de l'impact.
+                for (int i = 0; i < 5; i++)
+                {
+                    float a = Random.value * Mathf.PI * 2f, d = Random.Range(1.5f, 3.5f) * Mathf.Max(1f, GameConfig.Current.tuning.topScale / 1.55f);
+                    Vfx.Lightning(hit + Vector3.up * 0.2f, hit + new Vector3(Mathf.Cos(a) * d, 0.1f, Mathf.Sin(a) * d), color, 0.3f, 0.12f);
+                }
+                o.TakeDamage(o.MaxSpin * _fx.lightningDamage, src != null ? src.PlayerId : null);
+                o.Slow(1.2f);
+                o.Push(Vector3.up * 2.5f * o.Body.mass);
+                // Les voisins proches prennent un choc électrique.
+                foreach (var n in Nearest(o, 3, 3.5f * Mathf.Max(1f, GameConfig.Current.tuning.topScale / 1.55f)))
+                {
+                    if (n == src) continue;
+                    Vfx.Lightning(hit + Vector3.up * 0.5f, n.transform.position + Vector3.up * 0.5f, color, 0.3f, 0.2f);
+                    n.TakeDamage(n.MaxSpin * _fx.lightningDamage * 0.3f, src != null ? src.PlayerId : null);
+                    n.Push((n.transform.position - hit).Flat().normalized * 4f * n.Body.mass);
+                }
+                yield return new WaitForSeconds(0.35f);
+            }
+            yield return new WaitForSeconds(0.4f);
+            Sfx?.StormSky(0f);
         }
 
         System.Collections.Generic.IEnumerable<TopController> Nearest(TopController t, int count, float maxDist)
@@ -145,6 +215,9 @@ namespace SpinArena.Battle
             t.AddSpin(t.MaxSpin * Mathf.Min(fraction, 0.3f));
             AudioManager.Play("heal", 0.6f, 0.15f);
             Vfx.Sparkle(t.transform.position, new Color(0.5f, 1f, 0.6f));
+            // Spirale verte qui monte autour de la toupie + lueur au sol.
+            Sfx?.Spiral(t.transform.position, new Color(0.5f, 1f, 0.6f), 26, 0.9f);
+            Sfx?.GroundGlow(t.transform.position, 2f, 0.8f, new Color(0.4f, 1f, 0.5f, 0.8f), false, 3.5f);
             return true;
         }
 
@@ -153,6 +226,10 @@ namespace SpinArena.Battle
             if (!Ok(t)) return false;
             t.BuffHeavy(1.6f, seconds);
             Vfx.Shockwave(t.transform.position, new Color(0.8f, 0.8f, 0.85f));
+            // La toupie s'alourdit : le sol tremble, poussière, halo d'acier.
+            Sfx?.DustRing(t.transform.position, 18, 5f);
+            Sfx?.PowerAura(t.transform, seconds, new Color(0.75f, 0.8f, 0.9f));
+            CameraDirector.Instance.Shake(0.12f);
             return true;
         }
 
@@ -161,6 +238,8 @@ namespace SpinArena.Battle
             if (t == null || !t.Alive) return false;
             t.Grow(amount);
             Vfx.JoinBeam(t.transform.position, t.Glow);
+            Sfx?.Spiral(t.transform.position, new Color(1f, 0.85f, 0.3f), 30, 1.1f);
+            Sfx?.GroundGlow(t.transform.position, 2.5f, 0.9f, new Color(1f, 0.85f, 0.3f, 0.9f), false, 4.5f);
             AudioManager.Play("grow", 0.8f, 0.2f);
             return true;
         }
@@ -175,6 +254,10 @@ namespace SpinArena.Battle
             o.Slow(seconds);
             AudioManager.Play("freeze", 0.8f, 0.2f);
             Vfx.Shockwave(o.transform.position, new Color(0.6f, 0.9f, 1f));
+            // Rayon de givre de la toupie vers sa cible, éclats de glace, sol gelé.
+            Vfx.Lightning(t.transform.position + Vector3.up * 0.6f, o.transform.position + Vector3.up * 0.5f, new Color(0.7f, 0.95f, 1f), 0.35f, 0.3f);
+            Sfx?.ElectricSparks(o.transform.position + Vector3.up * 0.4f, 50, new Color(0.8f, 0.95f, 1f));
+            Sfx?.Scorch(o.transform.position, 2.6f, seconds + 1f, new Color(0.75f, 0.92f, 1f, 0.55f));
             return true;
         }
 
@@ -189,6 +272,12 @@ namespace SpinArena.Battle
             o.TakeDamage(o.MaxSpin * 0.03f * power, t.PlayerId);
             Vfx.Impact(o.transform.position + Vector3.up * 0.4f, t.Glow, Color.white, 90f);
             AudioManager.Play("impact", 1f, 0.05f);
+            // Frappe : éclair de lumière, onde, poussière, petite gerbe de feu.
+            Vfx.Shockwave(o.transform.position, t.Glow);
+            Sfx?.DustRing(o.transform.position, 14, 6f);
+            Sfx?.FireBurst(o.transform.position + Vector3.up * 0.4f, 8, Color.white);
+            Sfx?.LightFlash(o.transform.position + Vector3.up, t.Glow, 10f, 10f, 0.3f);
+            CameraDirector.Instance.Shake(0.15f);
             return true;
         }
 
@@ -214,6 +303,7 @@ namespace SpinArena.Battle
             {
                 t.AddSpin(t.MaxSpin * total / ticks);
                 Vfx.Sparkle(t.transform.position, new Color(1f, 0.6f, 0.85f));
+                Sfx?.Spiral(t.transform.position, new Color(0.6f, 1f, 0.6f), 10, 0.8f, true);
                 yield return new WaitForSeconds(0.5f);
             }
         }
@@ -248,6 +338,11 @@ namespace SpinArena.Battle
             t.BuffShield(0.35f, 10f);
             Vfx.JoinBeam(t.transform.position, new Color(1f, 0.85f, 0.3f));
             Vfx.Confetti(t.transform.position);
+            // Sacre : colonne dorée, aura royale, éclair de lumière.
+            Sfx?.PowerAura(t.transform, 10f, new Color(1f, 0.85f, 0.3f));
+            Sfx?.Spiral(t.transform.position, new Color(1f, 0.9f, 0.4f), 40, 1.3f);
+            Sfx?.LightFlash(t.transform.position + Vector3.up * 2f, new Color(1f, 0.85f, 0.4f), 20f, 16f, 0.8f);
+            Sfx?.ScreenFlash(0.25f);
             return true;
         }
 
@@ -268,7 +363,8 @@ namespace SpinArena.Battle
                         victim.TakeDamage(victim.MaxSpin * 0.07f, t.PlayerId);
                         victim.Push(((victim.transform.position - t.transform.position).Flat().normalized + Vector3.up * 0.2f) * 5f * victim.Body.mass);
                     }
-                });
+                    SpectacleFx.Instance?.FireImpact(m.transform.position, 0.45f);
+                }, false);
             }
             return true;
         }
@@ -287,9 +383,11 @@ namespace SpinArena.Battle
         {
             var arena = FindArena();
             float R = arena != null ? arena.Radius : 16f;
-            const float duration = 7f, reach = 6.5f;
+            const float duration = 7f;
+            float reach = 6.5f * (arena != null ? arena.Scale : 1f) * Mathf.Sqrt(Mathf.Max(1f, GameConfig.Current.tuning.topScale / 1.55f));
             float start = Time.time, angle = Random.value * Mathf.PI * 2f, spin = 0f;
             CameraDirector.Instance.Shake(0.35f);
+            Sfx?.StormSky(0.55f);
             var color = new Color(0.85f, 0.75f, 1f);
             while (Time.time - start < duration)
             {
@@ -313,9 +411,11 @@ namespace SpinArena.Battle
                     o.Body.AddForce(swirl * k, ForceMode.Acceleration);
                     o.TakeDamage(o.MaxSpin * 0.025f * k * Time.deltaTime, null);
                 }
+                if (Random.value < 0.05f) CameraDirector.Instance.Shake(0.08f);
                 yield return null;
             }
             Vfx.HideTornado();
+            Sfx?.StormSky(0f);
         }
 
         // ------------------------------------------------------------------ effets des cadeaux
@@ -372,14 +472,18 @@ namespace SpinArena.Battle
         void Land(Vector3 p)
         {
             Vfx.Explosion(p, new Color(1f, 0.5f, 0.15f), 1.3f);
+            Sfx?.FireImpact(p, 1f);
+            Sfx?.ScreenFlash(0.18f);
+            RenderingSetup.Pulse(0.5f);
             AudioManager.Play("meteor", 0.9f, 0.12f);
-            CameraDirector.Instance.Shake(0.22f);
+            CameraDirector.Instance.Shake(0.32f);
+            float radius = 3.2f * Mathf.Max(1f, GameConfig.Current.tuning.topScale / 1.55f);
             foreach (var o in _br.Fighting().ToList())
             {
                 Vector3 d = (o.transform.position - p).Flat();
                 float dist = d.magnitude;
-                if (dist > 3.2f) continue;
-                float k = 1f - dist / 3.2f;
+                if (dist > radius) continue;
+                float k = 1f - dist / radius;
                 o.TakeDamage(o.MaxSpin * _fx.meteorDamage * k, null);
                 o.Push((d.normalized + Vector3.up * 0.3f) * 6f * k * o.Body.mass);
             }

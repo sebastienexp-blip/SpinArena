@@ -101,7 +101,7 @@
                 "giftName": "Hand Wave",
                 "minDiamonds": 0,
                 "tier": 1,
-                "effect": "blast",
+                "effect": "lightning",
                 "perUserCooldown": 3.0
             },
             {
@@ -240,6 +240,7 @@
         "shockwaveRadius": 4.0,
         "shockwaveDamage": 0.06,
         "meteorDamage": 0.1,
+        "lightningDamage": 0.12,
         "meteorCount": 8,
         "tapsPerBoost": 15,
         "tapGrowth": 0.01,

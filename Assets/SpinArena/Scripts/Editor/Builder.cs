@@ -112,7 +112,12 @@ namespace SpinArena.EditorTools
             var tr = Mat("SA_Transparent", unlit);
             Transparent(tr, additive: false);
 
-            foreach (var n in new[] { "SA_Lit", "SA_LitNormal", "SA_Unlit", "SA_Additive", "SA_Transparent" })
+            // Particules en fondu normal (fumée, poussière, nuages) : couleurs par particule, transparence classique.
+            var pa = Mat("SA_ParticleAlpha", particles);
+            Transparent(pa, additive: false);
+            pa.SetTexture("_BaseMap", Texture2D.whiteTexture);
+
+            foreach (var n in new[] { "SA_Lit", "SA_LitNormal", "SA_Unlit", "SA_Additive", "SA_Transparent", "SA_ParticleAlpha" })
                 EditorUtility.SetDirty(AssetDatabase.LoadAssetAtPath<Material>(MaterialsDir + "/" + n + ".mat"));
         }
 

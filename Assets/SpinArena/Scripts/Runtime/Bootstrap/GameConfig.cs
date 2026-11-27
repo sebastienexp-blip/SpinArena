@@ -58,6 +58,8 @@ namespace SpinArena
         public float shockwaveRadius = 4f;
         public float shockwaveDamage = 0.06f;   // fraction de l'énergie max des cibles
         public float meteorDamage = 0.10f;
+        /// <summary>Dégâts de la foudre sur la toupie frappée (fraction de son énergie max).</summary>
+        public float lightningDamage = 0.12f;
         public int meteorCount = 8;
         /// <summary>Cadeaux : activés, font entrer le donateur, intensité globale, événements d'arène autorisés.</summary>
         public bool giftsEnabled = true;
@@ -174,7 +176,7 @@ namespace SpinArena
         public SoundSettings audio = new SoundSettings();
         public ShowSettings show = new ShowSettings();
         /// <summary>Version des réglages enregistrés (2 = toupies illimitées par défaut).</summary>
-        public int configVersion = 3;
+        public int configVersion = 4;
 
         public static GameConfig Current => GameManager.Instance != null ? GameManager.Instance.Config : _fallback ?? (_fallback = new GameConfig());
         static GameConfig _fallback;
@@ -219,6 +221,12 @@ namespace SpinArena
             if (cfg.configVersion < 2) { cfg.round.maxParticipants = 0; cfg.configVersion = 2; }
             // Version 3 : nouveau style (grosses toupies avec photo, arène plein écran).
             if (cfg.configVersion < 3) { cfg.tuning.topScale = Mathf.Max(cfg.tuning.topScale, 2.7f); cfg.configVersion = 3; }
+            // Version 4 : la Foudre arrive sur « Hand Wave » (avant : souffle géant, doublon des autres ondes).
+            if (cfg.configVersion < 4)
+            {
+                foreach (var r in cfg.gifts.rules) if (r.giftName == "Hand Wave" && r.effect == "blast") r.effect = "lightning";
+                cfg.configVersion = 4;
+            }
             // 0 = illimité ; sinon au moins 2 joueurs.
             cfg.round.maxParticipants = cfg.round.maxParticipants <= 0 ? 0 : Mathf.Max(2, cfg.round.maxParticipants);
             return cfg;

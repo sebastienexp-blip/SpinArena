@@ -383,7 +383,7 @@ namespace SpinArena.Tops
         public void Grow(float amount) { _size = Mathf.Clamp(_size + amount, 1f, MaxSize); }
 
         public void BuffHeavy(float mult, float seconds) { _heavyMult = Mathf.Clamp(mult, 1f, 2f); _heavyUntil = Time.time + seconds; }
-        public void Slow(float seconds) { _slowUntil = Time.time + seconds; }
+        public void Slow(float seconds) { _slowUntil = Time.time + seconds; VFX.SpectacleFx.Instance?.Frost(transform, seconds); }
         public bool Slowed => Time.time < _slowUntil;
 
         void ApplySize()
@@ -476,19 +476,26 @@ namespace SpinArena.Tops
         }
 
         public void BuffAttack(float mult, float seconds) { _atkMult = Mathf.Max(mult, 1f); _atkUntil = Time.time + seconds; }
-        public void BuffShield(float reduction, float seconds) { _shieldRed = Mathf.Clamp(reduction, 0f, CombatMath.MaxReduction); _shieldUntil = Time.time + seconds; }
+        public void BuffShield(float reduction, float seconds)
+        {
+            _shieldRed = Mathf.Clamp(reduction, 0f, CombatMath.MaxReduction); _shieldUntil = Time.time + seconds;
+            // Bulle d'énergie visible tant que le bouclier dure.
+            VFX.SpectacleFx.Instance?.ShieldBubble(transform, seconds, Color.Lerp(Glow, new Color(0.5f, 0.85f, 1f), 0.5f));
+        }
         /// <summary>Bonus cumulable en durée, plafonné au double de la durée de base.</summary>
         public void BuffPower(float mult, float seconds)
         {
             float now = Time.time;
             _powerMult = Mathf.Max(mult, 1f);
             _powerUntil = Mathf.Min(Mathf.Max(_powerUntil, now) + seconds, now + seconds * 2f);
+            VFX.SpectacleFx.Instance?.PowerAura(transform, _powerUntil - now, new Color(1f, 0.35f, 0.15f));
         }
 
         public void Turbo(float impulse, float seconds)
         {
             if (State != TopState.Fighting) return;
             _turboUntil = Time.time + seconds;
+            VFX.SpectacleFx.Instance?.Afterburner(transform, seconds, Glow);
             Vector3 dir = _target != null && _target.Alive ? (_target.transform.position - transform.position).Flat().normalized
                                                             : _rb.GetVelocity().Flat().normalized;
             if (dir.sqrMagnitude < 0.01f) dir = -transform.position.Flat().normalized;

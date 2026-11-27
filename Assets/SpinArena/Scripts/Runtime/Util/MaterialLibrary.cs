@@ -14,6 +14,7 @@ namespace SpinArena.Util
         public const string UnlitName = "SA_Unlit";
         public const string AdditiveName = "SA_Additive";
         public const string TransparentName = "SA_Transparent";
+        public const string ParticleAlphaName = "SA_ParticleAlpha";
 
         static readonly Dictionary<string, Material> Templates = new Dictionary<string, Material>();
         static readonly Dictionary<string, Material> Shared = new Dictionary<string, Material>();
@@ -72,6 +73,18 @@ namespace SpinArena.Util
             string key = "add" + ColorUtility.ToHtmlStringRGBA(c) + (tex != null ? tex.GetInstanceID().ToString() : "");
             if (Shared.TryGetValue(key, out var s) && s != null) return s;
             var m = new Material(Template(AdditiveName));
+            SetColor(m, c);
+            if (tex != null) SetTexture(m, tex);
+            Shared[key] = m;
+            return m;
+        }
+
+        /// <summary>Particules en fondu normal (fumée, poussière) : une instance par texture et couleur.</summary>
+        public static Material ParticleAlpha(Color c, Texture tex = null)
+        {
+            string key = "pa" + ColorUtility.ToHtmlStringRGBA(c) + (tex != null ? tex.GetInstanceID().ToString() : "");
+            if (Shared.TryGetValue(key, out var s) && s != null) return s;
+            var m = new Material(Template(ParticleAlphaName));
             SetColor(m, c);
             if (tex != null) SetTexture(m, tex);
             Shared[key] = m;
