@@ -233,11 +233,10 @@ namespace SpinArena
                 foreach (var r in cfg.gifts.rules) if (r.coins <= 0 && !string.IsNullOrEmpty(r.giftName)) r.coins = GiftSettings.DefaultCoins(r.giftName);
                 cfg.configVersion = 5;
             }
-            // Version 6 : Galaxy = toupie géante ; tout le reste sur des cadeaux à 200 pièces maximum.
+            // Version 6 : Galaxy = toupie géante ; tout le reste sur des cadeaux à 200 pièces maximum (TikTok Crown et Money Gun sans action).
             if (cfg.configVersion < 6)
             {
                 var def = GiftSettings.CreateDefault().rules;
-                cfg.gifts.rules.RemoveAll(r => r.giftName == "TikTok Crown" || r.giftName == "Money Gun");
                 foreach (var r in cfg.gifts.rules)
                 {
                     if (string.IsNullOrEmpty(r.giftName)) { if (r.minDiamonds == 1000 && r.effect == "meteor_storm") r.effect = "giant"; continue; }

@@ -165,6 +165,22 @@
                 "coins": 199
             },
             {
+                "giftName": "TikTok Crown",
+                "minDiamonds": 0,
+                "tier": 2,
+                "effect": "none",
+                "perUserCooldown": 10.0,
+                "coins": 299
+            },
+            {
+                "giftName": "Money Gun",
+                "minDiamonds": 0,
+                "tier": 2,
+                "effect": "none",
+                "perUserCooldown": 10.0,
+                "coins": 500
+            },
+            {
                 "giftName": "Galaxy",
                 "minDiamonds": 0,
                 "tier": 3,

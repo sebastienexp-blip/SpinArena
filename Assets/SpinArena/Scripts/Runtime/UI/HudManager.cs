@@ -164,7 +164,7 @@ namespace SpinArena.UI
             // Du cadeau le moins cher au plus cher.
             foreach (var r in GiftSettings.ByPrice(GameConfig.Current.gifts.rules, Live.GiftPrices.Of))
             {
-                if (string.IsNullOrEmpty(r.giftName)) continue;
+                if (string.IsNullOrEmpty(r.giftName) || string.IsNullOrEmpty(r.effect) || r.effect == "none") continue; // sans action : pas affiché
                 var icon = Live.GiftIcons.Get(r.giftName);
                 string slug = Live.GiftIcons.Slug(r.giftName == "Donut" ? "Doughnut" : r.giftName);
                 if (icon == null || !seen.Add(slug)) continue;
@@ -429,7 +429,7 @@ namespace SpinArena.UI
             // Du cadeau le moins cher au plus cher.
             foreach (var r in GiftSettings.ByPrice(cfg.gifts.rules, Live.GiftPrices.Of))
             {
-                if (string.IsNullOrEmpty(r.giftName)) continue;
+                if (string.IsNullOrEmpty(r.giftName) || string.IsNullOrEmpty(r.effect) || r.effect == "none") continue; // sans action : pas affiché
                 var icon = Live.GiftIcons.Get(r.giftName);
                 if (icon == null || !seen.Add(Live.GiftIcons.Slug(r.giftName == "Donut" ? "Doughnut" : r.giftName))) continue; // un seul « Doughnut »
                 rows.Add((icon, r.giftName, GiftEffects.NameOf(r.effect)));

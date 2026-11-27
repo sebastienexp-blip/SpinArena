@@ -307,7 +307,7 @@ static class Program
             Check(d.giftName == (string.IsNullOrEmpty(name) ? null : name) || (string.IsNullOrEmpty(d.giftName) && string.IsNullOrEmpty(name)), $"règle {i} : même cadeau ({name} / {d.giftName})");
             Check(d.effect == effect && (int)d.tier == tier, $"{name} : même action et niveau dans la config et le code");
             Check(GiftEffects.IsKnown(effect), $"{name} : action « {effect} » connue");
-            Check(runSource.Contains("case \"" + effect + "\":"), $"action « {effect} » programmée dans GiftManager");
+            Check(effect == "none" || runSource.Contains("case \"" + effect + "\":"), $"action « {effect} » programmée dans GiftManager");
             if (string.IsNullOrEmpty(name)) continue;
             string slug = name.Trim().ToLowerInvariant().Replace(' ', '_');
             if (slug == "donut") slug = "doughnut";
@@ -317,7 +317,8 @@ static class Program
             var g = new GiftProcessor(GiftSettings.CreateDefault());
             g.Receive(new LiveEvent { type = LiveEventType.Gift, msgId = "w" + i, user = new LiveUser { userId = "u" }, giftName = name.ToUpperInvariant(), diamondCount = 1, repeatCount = 1, repeatEnd = true }, 0);
             var a = g.Dequeue(0).FirstOrDefault();
-            Check(a != null && a.effect == effect && a.ruleName == name, $"{name} : événement → action {effect} (trouvé {a?.effect}, image de {a?.ruleName})");
+            if (effect == "none") Check(a == null, $"{name} : sans action, rien ne se déclenche");
+            else Check(a != null && a.effect == effect && a.ruleName == name, $"{name} : événement → action {effect} (trouvé {a?.effect}, image de {a?.ruleName})");
         }
         foreach (var f in System.IO.Directory.GetFiles(giftDir, "*.png"))
             Check(usedImages.Contains(System.IO.Path.GetFileNameWithoutExtension(f)), "image sans cadeau : " + System.IO.Path.GetFileName(f));

@@ -264,13 +264,14 @@ namespace SpinArena
             Stepper("Plafond d'énergie pour tous", () => fx.collectiveSpinCap, v => fx.collectiveSpinCap = v, 0f, 0.3f, 0.01f, Pct);
             Stepper("Durée de la surpuissance", () => fx.powerUpSeconds, v => fx.powerUpSeconds = v, 2, 20, 1, Sec);
             Stepper("Force de la surpuissance", () => fx.powerUpDamage, v => fx.powerUpDamage = v, 1f, 2f, 0.05f, Pct);
-            Header("Action de chaque cadeau");
-            foreach (var rule in g.rules.Where(x => !string.IsNullOrEmpty(x.giftName)))
+            Header("Action de chaque cadeau (du moins cher au plus cher)");
+            // « Aucune action » laisse un cadeau sans effet (pratique pour déplacer une action sur un autre cadeau).
+            foreach (var rule in GiftSettings.ByPrice(g.rules, GiftPrices.Of))
             {
                 var rr = rule;
                 Choice(rr.giftName, GiftEffects.EffectNames,
                     () => Math.Max(0, Array.IndexOf(GiftEffects.EffectIds, rr.effect)),
-                    i => rr.effect = GiftEffects.EffectIds[i], GiftIcons.Get(rr.giftName));
+                    i => { rr.effect = GiftEffects.EffectIds[i]; _gm.Hud.RefreshLegend(); }, GiftIcons.Get(rr.giftName));
             }
             Header("Cadeaux inconnus (selon leur valeur)");
             foreach (var rule in g.rules.Where(x => string.IsNullOrEmpty(x.giftName)).OrderByDescending(x => x.minDiamonds))

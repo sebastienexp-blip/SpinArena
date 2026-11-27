@@ -95,6 +95,9 @@ namespace SpinArena.Core.Live
                 new GiftRule { giftName = "Cap", tier = (GiftTier)2, effect = "royal", perUserCooldown = 10f, coins = 99 },
                 new GiftRule { giftName = "Hand Hearts", tier = (GiftTier)2, effect = "tornado", perUserCooldown = 60f, coins = 100 },
                 new GiftRule { giftName = "Sunglasses", tier = (GiftTier)3, effect = "meteor_storm", perUserCooldown = 60f, coins = 199 },
+                // Plus de 200 pièces : laissés sans action (à choisir dans les options si besoin).
+                new GiftRule { giftName = "TikTok Crown", tier = (GiftTier)2, effect = "none", perUserCooldown = 10f, coins = 299 },
+                new GiftRule { giftName = "Money Gun", tier = (GiftTier)2, effect = "none", perUserCooldown = 10f, coins = 500 },
                 new GiftRule { giftName = "Galaxy", tier = (GiftTier)3, effect = "giant", perUserCooldown = 60f, coins = 1000 },
                 new GiftRule { minDiamonds = 1000, tier = (GiftTier)3, effect = "giant", perUserCooldown = 60f },
                 new GiftRule { minDiamonds = 100, tier = (GiftTier)2, effect = "special_attack", perUserCooldown = 10f },
@@ -213,6 +216,12 @@ namespace SpinArena.Core.Live
             if (rule == null)
             {
                 Log(now, e.user.Key, e.user.DisplayName, e.giftName, "", newCount, e.diamondCount, "aucune règle");
+                return newCount;
+            }
+            // Cadeau laissé sans action dans les options : il est compté, mais ne déclenche rien.
+            if (string.IsNullOrEmpty(rule.effect) || rule.effect == "none")
+            {
+                Log(now, e.user.Key, e.user.DisplayName, e.giftName, "none", newCount, e.diamondCount, "sans action");
                 return newCount;
             }
 
