@@ -25,6 +25,9 @@ namespace SpinArena.Live
         public GiftProcessor Processor => _proc;
         /// <summary>Classement des donateurs du live en cours (panneau en haut à droite).</summary>
         public DonorBoard Donors { get; } = new DonorBoard();
+        /// <summary>Nombre reçu de chaque cadeau pendant ce live (clé : image du cadeau), pour le panneau de droite.</summary>
+        public readonly System.Collections.Generic.Dictionary<string, int> ReceivedCounts = new System.Collections.Generic.Dictionary<string, int>();
+        public int ReceivedVersion { get; private set; }
         public int Executed { get; private set; }
         /// <summary>Statistiques : action sur la toupie du donateur, sur une autre toupie, retour en jeu, énergie pour tous.</summary>
         public int Personal { get; private set; }
@@ -46,7 +49,16 @@ namespace SpinArena.Live
             if (GameConfig.Current.effects.giftJoins && _br.TopOf(e.user.Key) == null) _br.Join(e.user);
             GiftIcons.Remember(e.giftName, e.giftImageUrl);
             int added = _proc.Receive(e, now);
-            if (added > 0) Donors.Add(e.user.Key, e.user.DisplayName, e.giftName, added, Mathf.Max(1, e.diamondCount));
+            if (added > 0)
+            {
+                Donors.Add(e.user.Key, e.user.DisplayName, e.giftName, added, Mathf.Max(1, e.diamondCount));
+                var rule = _proc.FindRule(e.giftName, e.diamondCount);
+                string key = GiftIcons.Slug(rule != null && !string.IsNullOrEmpty(rule.giftName) ? rule.giftName : e.giftName);
+                if (key == "donut") key = "doughnut";
+                ReceivedCounts.TryGetValue(key, out int c);
+                ReceivedCounts[key] = c + added;
+                ReceivedVersion++;
+            }
         }
 
         /// <summary>Exécute les actions autorisées. Hors combat, elles patientent (rien n'est perdu).</summary>

@@ -116,67 +116,103 @@ namespace SpinArena.UI
             return true;
         }
 
-        // ------------------------------------------------------------------ classement des donateurs (portrait)
+        // ------------------------------------------------------------------ cadeaux → actions (portrait, à droite)
 
-        sealed class DonorRow { public RectTransform root; public RawImage icon; public Text count, name; public Image badge; }
-        readonly List<DonorRow> _donorRows = new List<DonorRow>();
-        RectTransform _donorRoot;
-        int _donorVersion = -1;
-        float _donorTimer;
-        const int DonorRows = 5;
+        sealed class GiftRow { public RectTransform root; public RawImage icon; public Text count, action; public Image badge; }
+        readonly List<GiftRow> _giftRows = new List<GiftRow>();
+        readonly List<(Texture icon, string slug, string action)> _giftList = new List<(Texture, string, string)>();
+        RectTransform _giftPanel;
+        CanvasGroup _giftPanelGroup;
+        int _giftPage, _giftVersion = -1;
+        float _giftPageTimer, _giftCountTimer;
+        const int GiftRowsShown = 5;
 
-        void BuildDonors(Transform root, float W)
+        /// <summary>
+        /// Panneau de droite : l'image de chaque cadeau, combien ont été reçus pendant le live, et ce qu'il déclenche.
+        /// 5 lignes à la fois ; il fait défiler toute la liste tout seul.
+        /// </summary>
+        void BuildGiftPanel(Transform root)
         {
-            _donorRows.Clear();
-            _donorVersion = -1;
+            _giftRows.Clear();
+            _giftVersion = -1;
+            _giftPage = 0;
+            _giftPageTimer = 5f;
             Vector2 tr = new Vector2(1f, 1f), tl = new Vector2(0f, 1f);
-            var panel = UiFactory.Panel("Donors", root, tr, tr, new Vector2(-8, -236), new Vector2(330, 24 + DonorRows * 92), new Color(0.05f, 0.05f, 0.12f, 0.55f));
-            _donorRoot = panel.rectTransform;
-            for (int i = 0; i < DonorRows; i++)
+            var panel = UiFactory.Panel("GiftActions", root, tr, tr, new Vector2(-8, -236), new Vector2(330, 24 + GiftRowsShown * 92), new Color(0.05f, 0.05f, 0.12f, 0.55f));
+            _giftPanel = panel.rectTransform;
+            _giftPanelGroup = panel.gameObject.AddComponent<CanvasGroup>();
+            for (int i = 0; i < GiftRowsShown; i++)
             {
-                var r = new DonorRow();
-                r.root = UiFactory.Rect("Donor" + i, panel.transform, tl, tl, tl, new Vector2(10, -12 - i * 92), new Vector2(310, 88));
+                var r = new GiftRow();
+                r.root = UiFactory.Rect("Gift" + i, panel.transform, tl, tl, tl, new Vector2(10, -12 - i * 92), new Vector2(310, 88));
                 r.icon = UiFactory.Picture("Icon", r.root, tl, tl, new Vector2(2, 0), 66);
                 r.badge = UiFactory.Panel("Badge", r.root, tl, tl, new Vector2(4, -60), new Vector2(62, 26), new Color(0f, 0f, 0f, 0.65f));
-                r.count = UiFactory.Label("Count", r.badge.transform, "", 20, TextAnchor.MiddleCenter, Color.white, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(62, 26));
+                r.count = UiFactory.Label("Count", r.badge.transform, "0", 20, TextAnchor.MiddleCenter, Color.white, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(62, 26));
                 r.count.fontStyle = FontStyle.Bold;
-                r.name = UiFactory.Label("Name", r.root, "", 28, TextAnchor.MiddleLeft, Color.white, tl, tl, new Vector2(80, -14), new Vector2(226, 44));
-                r.name.fontStyle = FontStyle.Bold;
-                r.root.gameObject.SetActive(false);
-                _donorRows.Add(r);
+                r.action = UiFactory.Label("Action", r.root, "", 27, TextAnchor.MiddleLeft, Color.white, tl, tl, new Vector2(80, -14), new Vector2(226, 44));
+                r.action.fontStyle = FontStyle.Bold;
+                _giftRows.Add(r);
             }
-            panel.gameObject.SetActive(false);
+            RefreshGiftList();
         }
 
-        void UpdateDonors(float t)
+        void RefreshGiftList()
         {
-            if (_donorRoot == null || !_portrait) return;
-            _donorTimer -= Time.unscaledDeltaTime;
-            if (_donorTimer > 0f) return;
-            _donorTimer = 0.5f;
-            var gifts = GameManager.Instance != null ? GameManager.Instance.Gifts : null;
-            if (gifts == null) return;
-            bool show = GameConfig.Current.display.showDonors && gifts.Donors.Count > 0;
-            _donorRoot.gameObject.SetActive(show);
-            if (!show || gifts.Donors.Version == _donorVersion) return;
-            _donorVersion = gifts.Donors.Version;
-            var top = gifts.Donors.Top(DonorRows);
-            for (int i = 0; i < _donorRows.Count; i++)
+            _giftList.Clear();
+            var seen = new HashSet<string>();
+            foreach (var r in GameConfig.Current.gifts.rules)
             {
-                var r = _donorRows[i];
-                bool on = i < top.Count;
+                if (string.IsNullOrEmpty(r.giftName)) continue;
+                var icon = Live.GiftIcons.Get(r.giftName);
+                string slug = Live.GiftIcons.Slug(r.giftName == "Donut" ? "Doughnut" : r.giftName);
+                if (icon == null || !seen.Add(slug)) continue;
+                _giftList.Add((icon, slug, GiftEffects.NameOf(r.effect)));
+            }
+            _giftVersion = -1;
+            ShowGiftPage();
+        }
+
+        void ShowGiftPage()
+        {
+            if (_giftPanel == null) return;
+            int pages = Mathf.Max(1, Mathf.CeilToInt(_giftList.Count / (float)GiftRowsShown));
+            _giftPage %= pages;
+            var counts = GameManager.Instance != null && GameManager.Instance.Gifts != null ? GameManager.Instance.Gifts.ReceivedCounts : null;
+            int shown = 0;
+            for (int i = 0; i < _giftRows.Count; i++)
+            {
+                int idx = _giftPage * GiftRowsShown + i;
+                var r = _giftRows[i];
+                bool on = idx < _giftList.Count;
                 r.root.gameObject.SetActive(on);
                 if (!on) continue;
-                var d = top[i];
-                var tex = Live.GiftIcons.Get(d.mainGift);
-                r.icon.texture = tex;
-                r.icon.gameObject.SetActive(tex != null);
-                r.count.text = d.mainGiftCount > 999 ? (d.mainGiftCount / 1000f).ToString("0.#") + "k" : d.mainGiftCount.ToString();
-                string n = d.userName ?? "";
-                r.name.text = n.Length > 12 ? n.Substring(0, 11) + "…" : n;
-                r.name.color = i == 0 ? UiFactory.Gold : Color.white;
+                shown++;
+                var g = _giftList[idx];
+                r.icon.texture = g.icon;
+                int c = 0;
+                if (counts != null) counts.TryGetValue(g.slug, out c);
+                r.count.text = c > 999 ? (c / 1000f).ToString("0.#") + "k" : c.ToString();
+                r.action.text = g.action;
             }
-            _donorRoot.sizeDelta = new Vector2(330, 24 + top.Count * 92);
+            _giftPanel.sizeDelta = new Vector2(330, 24 + shown * 92);
+        }
+
+        void UpdateGiftPanel(float dt)
+        {
+            if (_giftPanel == null || !_portrait) return;
+            bool show = GameConfig.Current.display.showDonors && _giftList.Count > 0;
+            _giftPanel.gameObject.SetActive(show);
+            if (!show) return;
+            // Défilement : nouvelle page toutes les 5 s, avec un fondu.
+            _giftPageTimer -= dt;
+            if (_giftPageTimer <= 0f) { _giftPageTimer = 5f; _giftPage++; ShowGiftPage(); _giftPanelGroup.alpha = 0f; }
+            _giftPanelGroup.alpha = Mathf.MoveTowards(_giftPanelGroup.alpha, 1f, dt * 4f);
+            // Compteurs mis à jour quand un cadeau arrive.
+            _giftCountTimer -= dt;
+            if (_giftCountTimer > 0f) return;
+            _giftCountTimer = 0.4f;
+            var gifts = GameManager.Instance != null ? GameManager.Instance.Gifts : null;
+            if (gifts != null && gifts.ReceivedVersion != _giftVersion) { _giftVersion = gifts.ReceivedVersion; ShowGiftPage(); }
         }
 
         void Build(Transform root)
@@ -208,7 +244,7 @@ namespace SpinArena.UI
                 _phase = UiFactory.Label("Phase", root, "", 26, TextAnchor.MiddleCenter, UiFactory.Accent, top, top, new Vector2(0, -160), new Vector2(W - 40, 36));
                 _survivors = UiFactory.Label("Survivors", root, "", 26, TextAnchor.MiddleCenter, UiFactory.Gold, top, top, new Vector2(0, -194), new Vector2(W - 40, 36));
                 _taps = UiFactory.Label("Taps", root, "", 20, TextAnchor.UpperRight, new Color(1f, 0.6f, 0.75f), tr, tr, new Vector2(-8, -6), new Vector2(260, 30));
-                BuildDonors(root, W);
+                BuildGiftPanel(root);
             }
             else
             {
@@ -379,6 +415,7 @@ namespace SpinArena.UI
         /// </summary>
         public void RefreshLegend()
         {
+            if (_giftPanel != null) RefreshGiftList();
             if (_legendRoot == null) return;
             for (int i = _legendRoot.childCount - 1; i >= 0; i--) Destroy(_legendRoot.GetChild(i).gameObject);
             var cfg = GameConfig.Current;
@@ -554,7 +591,7 @@ namespace SpinArena.UI
             _legendRoot.gameObject.SetActive(disp.showGiftLegend && !_portrait);
             _hintPanel.gameObject.SetActive(disp.showHint && !_portrait);
             _status.gameObject.SetActive(disp.showStatus && !_portrait);
-            UpdateDonors(t);
+            UpdateGiftPanel(dt);
             _banner.transform.parent.gameObject.SetActive(disp.showBanners);
             if (!disp.showGiftPopups) { _giftQueue.Clear(); _giftUntil = 0f; }
             if (!disp.showJoinCards) { _joinQueue.Clear(); _joinUntil = 0f; }
