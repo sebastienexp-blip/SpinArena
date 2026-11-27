@@ -161,13 +161,82 @@ namespace SpinArena.Tops
 
             if (_photo == null)
             {
-                var q = GameObject.CreatePrimitive(PrimitiveType.Quad);
-                q.name = "Photo";
-                DestroyImmediate(q.GetComponent<Collider>()); // immédiat : jamais de collider non convexe sur un corps physique
+                // Médaillon rond posé sur le dessus : photo de profil découpée en cercle + anneau lumineux.
+                var q = new GameObject("Photo", typeof(MeshFilter), typeof(MeshRenderer));
+                q.GetComponent<MeshFilter>().sharedMesh = DiscMesh;
                 q.transform.SetParent(transform, false);
                 _photo = q.GetComponent<MeshRenderer>();
                 _photo.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 _photo.receiveShadows = false;
+                var ring = new GameObject("Ring", typeof(MeshFilter), typeof(MeshRenderer));
+                ring.GetComponent<MeshFilter>().sharedMesh = RingMesh;
+                ring.transform.SetParent(q.transform, false);
+                ring.transform.localPosition = new Vector3(0f, 0f, 0.002f);
+                _ring = ring.GetComponent<MeshRenderer>();
+                _ring.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                _ring.receiveShadows = false;
+                // Sans photo : initiale du pseudo sur un disque de couleur.
+                var letter = new GameObject("Initial");
+                letter.transform.SetParent(q.transform, false);
+                letter.transform.localPosition = new Vector3(0f, 0f, -0.002f);
+                _initial = letter.AddComponent<TextMesh>();
+                _initial.font = Compat.UiFont;
+                _initial.GetComponent<MeshRenderer>().sharedMaterial = Compat.UiFont.material;
+                _initial.fontSize = 96;
+                _initial.characterSize = 0.075f;
+                _initial.anchor = TextAnchor.MiddleCenter;
+                _initial.alignment = TextAlignment.Center;
+                _initial.fontStyle = FontStyle.Bold;
+                _initial.color = Color.white;
+            }
+        }
+
+        MeshRenderer _ring;
+        TextMesh _initial;
+        Material _ringMat, _plainMat;
+
+        static Mesh _disc, _ringMesh;
+        /// <summary>Disque de rayon 0,5 (même face visible qu'un Quad), UV en cercle : l'image est découpée en rond.</summary>
+        static Mesh DiscMesh
+        {
+            get
+            {
+                if (_disc != null) return _disc;
+                const int n = 48;
+                var v = new Vector3[n + 1]; var uv = new Vector2[n + 1]; var t = new int[n * 3];
+                v[0] = Vector3.zero; uv[0] = new Vector2(0.5f, 0.5f);
+                for (int i = 0; i < n; i++)
+                {
+                    float a = i / (float)n * Mathf.PI * 2f, c = Mathf.Cos(a), sn = Mathf.Sin(a);
+                    v[i + 1] = new Vector3(c * 0.5f, sn * 0.5f, 0f);
+                    uv[i + 1] = new Vector2(0.5f + c * 0.5f, 0.5f + sn * 0.5f);
+                    t[i * 3] = 0; t[i * 3 + 1] = 1 + (i + 1) % n; t[i * 3 + 2] = 1 + i;
+                }
+                _disc = new Mesh { name = "PhotoDisc", vertices = v, uv = uv, triangles = t };
+                _disc.RecalculateNormals(); _disc.RecalculateBounds();
+                return _disc;
+            }
+        }
+        /// <summary>Anneau autour du médaillon (rayons 0,47 à 0,56).</summary>
+        static Mesh RingMesh
+        {
+            get
+            {
+                if (_ringMesh != null) return _ringMesh;
+                const int n = 48;
+                var v = new Vector3[n * 2]; var uv = new Vector2[n * 2]; var t = new int[n * 6];
+                for (int i = 0; i < n; i++)
+                {
+                    float a = i / (float)n * Mathf.PI * 2f, c = Mathf.Cos(a), sn = Mathf.Sin(a);
+                    v[i * 2] = new Vector3(c * 0.47f, sn * 0.47f, 0f); v[i * 2 + 1] = new Vector3(c * 0.56f, sn * 0.56f, 0f);
+                    uv[i * 2] = new Vector2(0.5f, 0.5f); uv[i * 2 + 1] = new Vector2(0.5f, 0.5f);
+                    int a0 = i * 2, a1 = i * 2 + 1, b0 = ((i + 1) % n) * 2, b1 = b0 + 1;
+                    t[i * 6] = a0; t[i * 6 + 1] = b1; t[i * 6 + 2] = a1;
+                    t[i * 6 + 3] = a0; t[i * 6 + 4] = b0; t[i * 6 + 5] = b1;
+                }
+                _ringMesh = new Mesh { name = "PhotoRing", vertices = v, uv = uv, triangles = t };
+                _ringMesh.RecalculateNormals(); _ringMesh.RecalculateBounds();
+                return _ringMesh;
             }
         }
 
@@ -176,9 +245,24 @@ namespace SpinArena.Tops
         {
             if (_photo == null) return;
             _hasPhoto = tex != null;
-            if (!_hasPhoto) return;
-            if (_photoMat == null) { _photoMat = MaterialLibrary.Transparent(tex, Color.white); _photo.sharedMaterial = _photoMat; }
+            // Anneau aux couleurs de la toupie.
+            if (_ringMat == null) { _ringMat = MaterialLibrary.Unlit(Glow); _ring.sharedMaterial = _ringMat; }
+            else MaterialLibrary.SetColor(_ringMat, Glow);
+            if (!_hasPhoto)
+            {
+                // Pas (encore) de photo : disque de couleur avec l'initiale du pseudo.
+                if (_plainMat == null) _plainMat = MaterialLibrary.Unlit(Color.Lerp(Glow, Color.black, 0.45f));
+                else MaterialLibrary.SetColor(_plainMat, Color.Lerp(Glow, Color.black, 0.45f));
+                _photo.sharedMaterial = _plainMat;
+                string n = DisplayName ?? "";
+                _initial.text = n.Length > 0 ? char.ToUpperInvariant(n[0]).ToString() : "?";
+                _initial.gameObject.SetActive(true);
+                return;
+            }
+            _initial.gameObject.SetActive(false);
+            if (_photoMat == null) _photoMat = MaterialLibrary.Transparent(tex, Color.white);
             else MaterialLibrary.SetTexture(_photoMat, tex);
+            _photo.sharedMaterial = _photoMat;
         }
         bool _hasPhoto;
 
@@ -567,7 +651,7 @@ namespace SpinArena.Tops
                 var disp = GameConfig.Current.display;
                 // Les pseudos sont affichés par l'interface (NameTags) : plus nets et lisibles qu'un texte 3D.
                 _label.gameObject.SetActive(false);
-                _photo.gameObject.SetActive(disp.showPhotos && _hasPhoto && State != TopState.Eliminated);
+                _photo.gameObject.SetActive(disp.showPhotos && State != TopState.Eliminated);
                 if ((!disp.trails || LowDetail) && _trail.emitting) _trail.emitting = false;
                 if (_blur != null && _blur.gameObject.activeSelf == LowDetail) _blur.gameObject.SetActive(!LowDetail);
             }
@@ -582,10 +666,11 @@ namespace SpinArena.Tops
             // Photo posée sur le dessus de la toupie, inclinée vers la caméra pour rester lisible ; elle ne tourne pas.
             float k = TopScale * _sizeVisual;
             Vector3 toCam = (cam.transform.position - transform.position).normalized;
-            Vector3 normal = Vector3.Slerp(Vector3.up, toCam, 0.45f);
-            _photo.transform.position = transform.position + Vector3.up * (0.43f * k) + normal * 0.02f;
+            // Médaillon presque à plat, comme une vraie toupie vue d'en haut, et assez grand pour couvrir le dessus.
+            Vector3 normal = Vector3.Slerp(Vector3.up, toCam, 0.3f);
+            _photo.transform.position = transform.position + Vector3.up * (0.45f * k) + normal * 0.02f;
             _photo.transform.rotation = Quaternion.LookRotation(-normal, cam.transform.up);
-            _photo.transform.localScale = Vector3.one * (0.62f * k);
+            _photo.transform.localScale = Vector3.one * (0.8f * k);
             _label.transform.position = transform.position + up * (1.25f * k) + Vector3.up * 0.4f;
             NameAnchor = transform.position + Vector3.up * (0.75f * k);
             _label.transform.rotation = face;

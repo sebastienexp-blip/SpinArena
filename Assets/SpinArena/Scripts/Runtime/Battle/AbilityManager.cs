@@ -41,12 +41,8 @@ namespace SpinArena.Battle
                 case Element.Electricity: // Surcharge : accélération + décharge sur les deux adversaires les plus proches.
                     t.Turbo(_fx.turboImpulse * 1.2f, 3f);
                     t.BuffAttack(1.3f, 4f);
-                    foreach (var o in Nearest(t, 2, 7f))
-                    {
-                        o.TakeDamage(o.MaxSpin * 0.05f * power, t.PlayerId);
-                        Vfx.Impact(Vector3.Lerp(p, o.transform.position, 0.5f) + Vector3.up * 0.4f, c, Color.white, 80f);
-                        Vfx.Impact(o.transform.position + Vector3.up * 0.4f, c, Color.white, 60f);
-                    }
+                    // Éclair en chaîne : il saute d'adversaire en adversaire (jusqu'à 5).
+                    ChainLightning(t, 5, 9f, 0.05f * power, c);
                     break;
                 case Element.Fire: // Explosion de zone.
                     Shockwave(t, _fx.shockwaveRadius * 1.15f, _fx.shockwaveDamage * 1.2f * power, 7f);
@@ -89,9 +85,32 @@ namespace SpinArena.Battle
             return true;
         }
 
+        /// <summary>Éclair qui part de la toupie et rebondit sur les adversaires les plus proches, un par un.</summary>
+        public void ChainLightning(TopController src, int hops, float range, float dmgFraction, Color c)
+        {
+            if (!Ok(src)) return;
+            var hit = new System.Collections.Generic.HashSet<TopController> { src };
+            TopController from = src;
+            for (int i = 0; i < hops; i++)
+            {
+                Vector3 fp = from.transform.position;
+                var next = _br.Fighting().Where(o => !hit.Contains(o) && (o.transform.position - fp).Flat().magnitude <= range)
+                                         .OrderBy(o => (o.transform.position - fp).sqrMagnitude).FirstOrDefault();
+                if (next == null) break;
+                hit.Add(next);
+                Vfx.Lightning(fp + Vector3.up * 0.6f, next.transform.position + Vector3.up * 0.5f, c, 0.4f + i * 0.05f);
+                next.TakeDamage(next.MaxSpin * dmgFraction * (1f - i * 0.12f), src.PlayerId);
+                next.Push((next.transform.position - fp).Flat().normalized * 3f * next.Body.mass);
+                from = next;
+            }
+            AudioManager.Play("shockwave", 0.7f, 0.15f);
+            CameraDirector.Instance.Shake(0.12f);
+        }
+
         void Shockwave(TopController src, float radius, float dmgFraction, float impulse)
         {
             Vector3 p = src.transform.position;
+            int arcs = 0;
             foreach (var o in _br.Fighting().ToList())
             {
                 if (o == src) continue;
@@ -101,6 +120,8 @@ namespace SpinArena.Battle
                 float k = 1f - dist / radius;
                 o.TakeDamage(o.MaxSpin * dmgFraction * k, src.PlayerId);
                 o.Push((d.normalized + Vector3.up * 0.15f) * impulse * k * o.Body.mass);
+                // Arcs électriques vers les toupies touchées (spectaculaire, sans changer les dégâts).
+                if (arcs++ < 8) Vfx.Lightning(p + Vector3.up * 0.6f, o.transform.position + Vector3.up * 0.5f, src.Glow, 0.3f);
             }
             Vfx.Shockwave(p, src.Glow);
             AudioManager.Play("shockwave", 0.9f, 0.1f);

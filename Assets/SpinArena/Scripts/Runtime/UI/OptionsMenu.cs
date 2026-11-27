@@ -293,6 +293,7 @@ namespace SpinArena
             Stepper("Effets allégés au-delà de", () => d.detailLimit, v => d.detailLimit = (int)v, 20, 400, 10, v => v.ToString("0") + " toupies");
             Toggle("Liste des cadeaux et interactions", () => d.showGiftLegend, v => d.showGiftLegend = v);
             Toggle("Photos de profil sur les toupies", () => d.showPhotos, v => d.showPhotos = v);
+            Toggle("Classement des soutiens (portrait)", () => d.showDonors, v => d.showDonors = v);
             Toggle("Liste des joueurs", () => d.showPlayerList, v => d.showPlayerList = v);
             Toggle("Annonces des cadeaux", () => d.showGiftPopups, v => d.showGiftPopups = v);
             Toggle("Cartes d'arrivée des joueurs", () => d.showJoinCards, v => d.showJoinCards = v);

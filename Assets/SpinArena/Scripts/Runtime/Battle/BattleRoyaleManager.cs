@@ -171,10 +171,12 @@ namespace SpinArena.Battle
         void UpdateCrowd()
         {
             int n = Mathf.Max(Round.Participants.Count, _tops.Count);
-            float k = Mathf.Clamp(Mathf.Sqrt(n / 45f), 1f, 2.2f);
+            // Place disponible : ~45 toupies à la taille 1,55 ; moins quand les toupies sont plus grosses.
+            float baseCap = 45f * Mathf.Pow(1.55f / Mathf.Max(0.5f, _cfg.tuning.topScale), 2f);
+            float k = Mathf.Clamp(Mathf.Sqrt(n / baseCap), 1f, 3f);
             // Petite marge pour ne pas changer la taille de l'arène à chaque arrivée.
             if (Mathf.Abs(k - _arena.Scale) > 0.06f || (k == 1f && _arena.Scale != 1f)) _arena.SetScale(k);
-            float capacity = 45f * _arena.Scale * _arena.Scale;
+            float capacity = baseCap * _arena.Scale * _arena.Scale;
             float crowd = n > capacity ? Mathf.Clamp(Mathf.Sqrt(capacity / n), 0.6f, 1f) : 1f;
             bool low = n > Mathf.Max(20, _cfg.display.detailLimit);
             bool changed = Mathf.Abs(crowd - TopController.CrowdScale) > 0.01f;

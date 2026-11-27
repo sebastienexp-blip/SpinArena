@@ -80,10 +80,13 @@ namespace SpinArena.CameraRig
         /// Angle de vue : 45° en paysage. En portrait (écran plus haut que large), l'angle vertical s'ouvre
         /// pour que l'arène occupe toute la largeur de l'écran.
         /// </summary>
+        /// <summary>Gros plans plus éloignés quand les toupies sont plus grosses.</summary>
+        static float TopScaleFactor => Mathf.Max(1f, GameConfig.Current.tuning.topScale / 1.55f);
+
         public static float BaseFov(float aspect)
         {
             if (aspect >= 1f) return 45f;
-            float v = 2f * Mathf.Atan(Mathf.Tan(27f * Mathf.Deg2Rad) / Mathf.Max(0.3f, aspect)) * Mathf.Rad2Deg;
+            float v = 2f * Mathf.Atan(Mathf.Tan(23f * Mathf.Deg2Rad) / Mathf.Max(0.3f, aspect)) * Mathf.Rad2Deg;
             return Mathf.Clamp(v, 45f, 95f);
         }
 
@@ -100,16 +103,12 @@ namespace SpinArena.CameraRig
             _smoothedFocus = Vector3.Lerp(_smoothedFocus, _focusPoint, 1f - Mathf.Exp(-dt * 3f));
 
             // Vue d'ensemble : toute l'arène tient dans un écran 16:9 (caméra en hauteur, inclinée).
-            float dist = Mathf.Lerp(_arenaRadius * 2.45f * Mathf.Clamp(disp.cameraDistance, 0.6f, 1.5f), 7f, _closeness);
-            float pitch = Mathf.Lerp(52f, 30f, _closeness);
+            // Portrait : caméra plus plongeante et plus proche, l'arène remplit tout l'écran (le bord déborde un peu).
+            bool portrait = Cam.aspect < 1f;
+            float dist = Mathf.Lerp(_arenaRadius * (portrait ? 2.2f : 2.45f) * Mathf.Clamp(disp.cameraDistance, 0.6f, 1.5f), 7f * TopScaleFactor, _closeness);
+            float pitch = Mathf.Lerp(portrait ? 60f : 52f, 30f, _closeness);
             Quaternion rot = Quaternion.Euler(pitch, _orbit, 0f);
             Vector3 look = Vector3.Lerp(Vector3.zero, _smoothedFocus + Vector3.up * 0.6f, Mathf.Clamp01(_closeness * 2f));
-            if (Cam.aspect < 1f)
-            {
-                // Portrait : l'arène remonte un peu pour se placer entre le classement (haut) et les cadeaux (bas).
-                Vector3 fwd = rot * Vector3.forward; fwd.y = 0f;
-                look -= fwd.normalized * _arenaRadius * 0.2f * (1f - _closeness);
-            }
             Vector3 pos = look - rot * Vector3.forward * dist;
             if (_shake > 0f)
             {

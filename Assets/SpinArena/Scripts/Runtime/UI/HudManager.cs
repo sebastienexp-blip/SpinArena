@@ -116,6 +116,69 @@ namespace SpinArena.UI
             return true;
         }
 
+        // ------------------------------------------------------------------ classement des donateurs (portrait)
+
+        sealed class DonorRow { public RectTransform root; public RawImage icon; public Text count, name; public Image badge; }
+        readonly List<DonorRow> _donorRows = new List<DonorRow>();
+        RectTransform _donorRoot;
+        int _donorVersion = -1;
+        float _donorTimer;
+        const int DonorRows = 5;
+
+        void BuildDonors(Transform root, float W)
+        {
+            _donorRows.Clear();
+            _donorVersion = -1;
+            Vector2 tr = new Vector2(1f, 1f), tl = new Vector2(0f, 1f);
+            var panel = UiFactory.Panel("Donors", root, tr, tr, new Vector2(-8, -236), new Vector2(330, 24 + DonorRows * 92), new Color(0.05f, 0.05f, 0.12f, 0.55f));
+            _donorRoot = panel.rectTransform;
+            for (int i = 0; i < DonorRows; i++)
+            {
+                var r = new DonorRow();
+                r.root = UiFactory.Rect("Donor" + i, panel.transform, tl, tl, tl, new Vector2(10, -12 - i * 92), new Vector2(310, 88));
+                r.icon = UiFactory.Picture("Icon", r.root, tl, tl, new Vector2(2, 0), 66);
+                r.badge = UiFactory.Panel("Badge", r.root, tl, tl, new Vector2(4, -60), new Vector2(62, 26), new Color(0f, 0f, 0f, 0.65f));
+                r.count = UiFactory.Label("Count", r.badge.transform, "", 20, TextAnchor.MiddleCenter, Color.white, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(62, 26));
+                r.count.fontStyle = FontStyle.Bold;
+                r.name = UiFactory.Label("Name", r.root, "", 28, TextAnchor.MiddleLeft, Color.white, tl, tl, new Vector2(80, -14), new Vector2(226, 44));
+                r.name.fontStyle = FontStyle.Bold;
+                r.root.gameObject.SetActive(false);
+                _donorRows.Add(r);
+            }
+            panel.gameObject.SetActive(false);
+        }
+
+        void UpdateDonors(float t)
+        {
+            if (_donorRoot == null || !_portrait) return;
+            _donorTimer -= Time.unscaledDeltaTime;
+            if (_donorTimer > 0f) return;
+            _donorTimer = 0.5f;
+            var gifts = GameManager.Instance != null ? GameManager.Instance.Gifts : null;
+            if (gifts == null) return;
+            bool show = GameConfig.Current.display.showDonors && gifts.Donors.Count > 0;
+            _donorRoot.gameObject.SetActive(show);
+            if (!show || gifts.Donors.Version == _donorVersion) return;
+            _donorVersion = gifts.Donors.Version;
+            var top = gifts.Donors.Top(DonorRows);
+            for (int i = 0; i < _donorRows.Count; i++)
+            {
+                var r = _donorRows[i];
+                bool on = i < top.Count;
+                r.root.gameObject.SetActive(on);
+                if (!on) continue;
+                var d = top[i];
+                var tex = Live.GiftIcons.Get(d.mainGift);
+                r.icon.texture = tex;
+                r.icon.gameObject.SetActive(tex != null);
+                r.count.text = d.mainGiftCount > 999 ? (d.mainGiftCount / 1000f).ToString("0.#") + "k" : d.mainGiftCount.ToString();
+                string n = d.userName ?? "";
+                r.name.text = n.Length > 12 ? n.Substring(0, 11) + "…" : n;
+                r.name.color = i == 0 ? UiFactory.Gold : Color.white;
+            }
+            _donorRoot.sizeDelta = new Vector2(330, 24 + top.Count * 92);
+        }
+
         void Build(Transform root)
         {
             Vector2 top = new Vector2(0.5f, 1f), tl = new Vector2(0f, 1f), tr = new Vector2(1f, 1f), bottom = new Vector2(0.5f, 0f), center = new Vector2(0.5f, 0.5f);
@@ -134,14 +197,29 @@ namespace SpinArena.UI
             _legendRoot = legend.rectTransform;
             RefreshLegend();
 
-            // Bandeau du haut.
-            var bar = UiFactory.Panel("TopBar", root, top, top, new Vector2(0, -14), new Vector2(P ? W - 24 : 760, 112), UiFactory.PanelColor);
-            float bw = P ? W - 44 : 740;
-            UiFactory.Label("Title", bar.transform, "<color=#5CE1FF>SPIN</color> ARENA", 50, TextAnchor.MiddleCenter, Color.white, top, top, new Vector2(0, -6), new Vector2(bw, 60));
-            _phase = UiFactory.Label("Phase", bar.transform, "", 28, TextAnchor.MiddleLeft, UiFactory.Accent, new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(26, 8), new Vector2(P ? 420 : 320, 40));
-            _timer = UiFactory.Label("Timer", bar.transform, "", 30, TextAnchor.MiddleCenter, Color.white, bottom, bottom, new Vector2(0, 8), new Vector2(160, 40));
-            _taps = UiFactory.Label("Taps", bar.transform, "", 20, TextAnchor.UpperRight, new Color(1f, 0.6f, 0.75f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-18, -8), new Vector2(240, 30));
-            _survivors = UiFactory.Label("Survivors", bar.transform, "", 28, TextAnchor.MiddleRight, UiFactory.Gold, new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-26, 8), new Vector2(P ? 420 : 320, 40));
+            if (P)
+            {
+                // Portrait épuré : petit titre, gros chrono dans un cadre lumineux, la manche et les survivants dessous.
+                UiFactory.Label("Title", root, "<color=#5CE1FF>SPIN</color> ARENA", 34, TextAnchor.MiddleCenter, Color.white, top, top, new Vector2(0, -2), new Vector2(600, 44));
+                var frame = UiFactory.Panel("TimerFrame", root, top, top, new Vector2(0, -46), new Vector2(300, 108), new Color(1f, 0.25f, 0.35f, 0.95f));
+                var inner = UiFactory.Panel("TimerInner", frame.transform, center, center, Vector2.zero, new Vector2(288, 96), new Color(0.03f, 0.03f, 0.1f, 0.96f));
+                _timer = UiFactory.Label("Timer", inner.transform, "", 70, TextAnchor.MiddleCenter, new Color(1f, 0.72f, 0.25f), center, center, Vector2.zero, new Vector2(280, 96));
+                _timer.fontStyle = FontStyle.Bold;
+                _phase = UiFactory.Label("Phase", root, "", 26, TextAnchor.MiddleCenter, UiFactory.Accent, top, top, new Vector2(0, -160), new Vector2(W - 40, 36));
+                _survivors = UiFactory.Label("Survivors", root, "", 26, TextAnchor.MiddleCenter, UiFactory.Gold, top, top, new Vector2(0, -194), new Vector2(W - 40, 36));
+                _taps = UiFactory.Label("Taps", root, "", 20, TextAnchor.UpperRight, new Color(1f, 0.6f, 0.75f), tr, tr, new Vector2(-8, -6), new Vector2(260, 30));
+                BuildDonors(root, W);
+            }
+            else
+            {
+                // Bandeau du haut.
+                var bar = UiFactory.Panel("TopBar", root, top, top, new Vector2(0, -14), new Vector2(760, 112), UiFactory.PanelColor);
+                UiFactory.Label("Title", bar.transform, "<color=#5CE1FF>SPIN</color> ARENA", 50, TextAnchor.MiddleCenter, Color.white, top, top, new Vector2(0, -6), new Vector2(740, 60));
+                _phase = UiFactory.Label("Phase", bar.transform, "", 28, TextAnchor.MiddleLeft, UiFactory.Accent, new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(26, 8), new Vector2(320, 40));
+                _timer = UiFactory.Label("Timer", bar.transform, "", 30, TextAnchor.MiddleCenter, Color.white, bottom, bottom, new Vector2(0, 8), new Vector2(160, 40));
+                _taps = UiFactory.Label("Taps", bar.transform, "", 20, TextAnchor.UpperRight, new Color(1f, 0.6f, 0.75f), new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-18, -8), new Vector2(240, 30));
+                _survivors = UiFactory.Label("Survivors", bar.transform, "", 28, TextAnchor.MiddleRight, UiFactory.Gold, new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-26, 8), new Vector2(320, 40));
+            }
 
             // Liste des joueurs : à gauche en paysage (10 lignes), sous le bandeau en portrait (6 joueurs sur 2 colonnes).
             int rows = P ? 6 : Rows;
@@ -164,7 +242,9 @@ namespace SpinArena.UI
             }
 
             // Annonces des cadeaux (image + pseudo + action), sous le bandeau du haut (sous la liste en portrait).
-            var gp = UiFactory.Panel("GiftPopup", root, top, top, new Vector2(0, P ? -404 : -140), new Vector2(620, 110), new Color(0.06f, 0.04f, 0.14f, 0.9f));
+            var gp = P
+                ? UiFactory.Panel("GiftPopup", root, tl, tl, new Vector2(12, -240), new Vector2(620, 110), new Color(0.06f, 0.04f, 0.14f, 0.9f))
+                : UiFactory.Panel("GiftPopup", root, top, top, new Vector2(0, -140), new Vector2(620, 110), new Color(0.06f, 0.04f, 0.14f, 0.9f));
             _giftCard = gp.rectTransform;
             _giftGroup = gp.gameObject.AddComponent<CanvasGroup>();
             _giftIcon = UiFactory.Picture("Icon", gp.transform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(10, 0), 96);
@@ -192,15 +272,17 @@ namespace SpinArena.UI
 
             // Annonces moyennes (séries, primes, duel…), sous l'annonce des cadeaux.
             float annW = P ? W - 40 : 1000;
-            var ann = UiFactory.Rect("Announce", root, top, top, top, new Vector2(0, P ? -526 : -262), new Vector2(annW, 70));
+            var ann = UiFactory.Rect("Announce", root, top, top, top, new Vector2(0, P ? -760 : -262), new Vector2(annW, 70));
             _announceGroup = ann.gameObject.AddComponent<CanvasGroup>();
             _announce = UiFactory.Label("Text", ann, "", P ? 40 : 44, TextAnchor.MiddleCenter, Color.white, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(annW, 70));
             _announce.fontStyle = FontStyle.Bold;
             _announceGroup.alpha = 0f;
 
             // Carte d'entrée dans l'arène.
-            _joinPos = new Vector2(0, P ? 604 : 100);
-            var join = UiFactory.Panel("JoinCard", root, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), _joinPos, new Vector2(620, 120), new Color(0.05f, 0.1f, 0.25f, 0.92f));
+            // Portrait : sous l'annonce des cadeaux, en haut à gauche (le bas de l'écran est couvert par le chat TikTok).
+            Vector2 joinAnchor = P ? tl : new Vector2(0.5f, 0f);
+            _joinPos = P ? new Vector2(12, -364) : new Vector2(0, 100);
+            var join = UiFactory.Panel("JoinCard", root, joinAnchor, joinAnchor, _joinPos, new Vector2(620, 120), new Color(0.05f, 0.1f, 0.25f, 0.92f));
             _joinCard = join.rectTransform;
             _joinGroup = join.gameObject.AddComponent<CanvasGroup>();
             _joinAvatar = UiFactory.Picture("Avatar", join.transform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(12, 0), 96);
@@ -467,10 +549,12 @@ namespace SpinArena.UI
             bool portraitNow = Screen.height > Screen.width;
             if (portraitNow != _portrait) BuildLayout(portraitNow);
             else if (ApplySafeArea()) BuildLayout(_portrait);
-            _listRoot.gameObject.SetActive(disp.showPlayerList);
-            _legendRoot.gameObject.SetActive(disp.showGiftLegend);
-            _hintPanel.gameObject.SetActive(disp.showHint);
-            _status.gameObject.SetActive(disp.showStatus);
+            // Portrait : écran épuré comme les jeux de live verticaux (l'arène d'abord, le chat TikTok couvre le bas).
+            _listRoot.gameObject.SetActive(disp.showPlayerList && !_portrait);
+            _legendRoot.gameObject.SetActive(disp.showGiftLegend && !_portrait);
+            _hintPanel.gameObject.SetActive(disp.showHint && !_portrait);
+            _status.gameObject.SetActive(disp.showStatus && !_portrait);
+            UpdateDonors(t);
             _banner.transform.parent.gameObject.SetActive(disp.showBanners);
             if (!disp.showGiftPopups) { _giftQueue.Clear(); _giftUntil = 0f; }
             if (!disp.showJoinCards) { _joinQueue.Clear(); _joinUntil = 0f; }

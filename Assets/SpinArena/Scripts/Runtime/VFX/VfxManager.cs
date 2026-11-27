@@ -48,9 +48,11 @@ namespace SpinArena.VFX
             main.loop = true; // reste « en lecture » pour simuler les particules émises à la demande
             main.maxParticles = max;
             main.simulationSpace = ParticleSystemSimulationSpace.World;
+            // Effets à l'échelle des toupies : plus elles sont grosses, plus les gerbes et explosions sont grandes.
+            float k = FxScale;
             main.startLifetime = new ParticleSystem.MinMaxCurve(lifeMin, lifeMax);
-            main.startSpeed = new ParticleSystem.MinMaxCurve(speedMin, speedMax);
-            main.startSize = new ParticleSystem.MinMaxCurve(sizeMin, sizeMax);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(speedMin * k, speedMax * k);
+            main.startSize = new ParticleSystem.MinMaxCurve(sizeMin * k, sizeMax * k);
             main.gravityModifier = gravity ? 0.5f : 0f;
             var em = ps.emission; em.enabled = false;
             var shape = ps.shape; shape.shapeType = ParticleSystemShapeType.Sphere; shape.radius = 0.1f;
@@ -69,7 +71,86 @@ namespace SpinArena.VFX
             return ps;
         }
 
-        void LateUpdate() => _budgetThisFrame = 0;
+        static float FxScale => Mathf.Clamp(GameConfig.Current.tuning.topScale / 1.55f, 1f, 2f);
+
+        void LateUpdate()
+        {
+            _budgetThisFrame = 0;
+            UpdateBolts();
+        }
+
+        // ------------------------------------------------------------------ éclairs
+
+        sealed class Bolt
+        {
+            public LineRenderer line;
+            public Vector3 from, to;
+            public float until, nextJitter, width;
+            public Color color;
+        }
+        readonly List<Bolt> _bolts = new List<Bolt>();
+        const int BoltPoints = 14;
+
+        /// <summary>Éclair crépitant entre deux points (quelques dixièmes de seconde), avec une gerbe à l'arrivée.</summary>
+        public void Lightning(Vector3 from, Vector3 to, Color color, float seconds = 0.35f, float width = 0.18f)
+        {
+            if (GameConfig.Current.display.particles <= 0.05f) return;
+            Bolt b = null;
+            foreach (var x in _bolts) if (!x.line.gameObject.activeSelf) { b = x; break; }
+            if (b == null)
+            {
+                if (_bolts.Count >= 40) return;
+                var go = new GameObject("Bolt");
+                go.transform.SetParent(transform, false);
+                var lr = go.AddComponent<LineRenderer>();
+                lr.positionCount = BoltPoints;
+                lr.useWorldSpace = true;
+                lr.numCapVertices = 2;
+                lr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                lr.receiveShadows = false;
+                lr.sharedMaterial = MaterialLibrary.Additive(Color.white, MaterialLibrary.SoftDot);
+                b = new Bolt { line = lr };
+                _bolts.Add(b);
+            }
+            b.from = from; b.to = to; b.color = color;
+            b.until = Time.time + seconds; b.nextJitter = 0f; b.width = width * FxScale;
+            b.line.gameObject.SetActive(true);
+            Jitter(b);
+            Emit(_sparks, to, 14, Color.Lerp(color, Color.white, 0.5f) * 2f);
+            Emit(_glow, to, 1, color * 1.6f);
+        }
+
+        void Jitter(Bolt b)
+        {
+            Vector3 d = b.to - b.from;
+            float len = d.magnitude;
+            Vector3 side = Vector3.Cross(d.normalized, Vector3.up);
+            if (side.sqrMagnitude < 0.01f) side = Vector3.right;
+            side.Normalize();
+            for (int i = 0; i < BoltPoints; i++)
+            {
+                float t = i / (float)(BoltPoints - 1);
+                float amp = Mathf.Sin(t * Mathf.PI) * len * 0.12f;
+                Vector3 p = Vector3.Lerp(b.from, b.to, t) + side * Random.Range(-amp, amp) + Vector3.up * Random.Range(-amp, amp) * 0.6f;
+                b.line.SetPosition(i, p);
+            }
+            float w = b.width * Random.Range(0.7f, 1.3f);
+            b.line.widthCurve = new AnimationCurve(new Keyframe(0f, w), new Keyframe(0.5f, w * 1.3f), new Keyframe(1f, w * 0.6f));
+            var c = Color.Lerp(b.color, Color.white, 0.35f) * 2.2f;
+            b.line.startColor = c; b.line.endColor = c;
+            b.nextJitter = Time.time + 0.045f;
+        }
+
+        void UpdateBolts()
+        {
+            for (int i = 0; i < _bolts.Count; i++)
+            {
+                var b = _bolts[i];
+                if (!b.line.gameObject.activeSelf) continue;
+                if (Time.time >= b.until) { b.line.gameObject.SetActive(false); continue; }
+                if (Time.time >= b.nextJitter) Jitter(b);
+            }
+        }
 
         void Emit(ParticleSystem ps, Vector3 pos, int count, Color color)
         {
@@ -95,10 +176,14 @@ namespace SpinArena.VFX
         /// <summary>Explosion d'élimination.</summary>
         public void Explosion(Vector3 pos, Color color, float scale = 1f)
         {
-            Emit(_glow, pos, 2, color * 2f);
-            Emit(_debris, pos, Mathf.RoundToInt(40 * scale), Color.Lerp(color, Color.white, 0.3f));
-            Emit(_sparks, pos, Mathf.RoundToInt(50 * scale), color * 1.8f);
-            Emit(_ring, pos + Vector3.up * 0.1f, 1, color);
+            // Grosse explosion : éclair blanc, débris, gerbe d'étincelles et double onde au sol.
+            Emit(_glow, pos, 3, color * 2.4f);
+            Emit(_glow, pos + Vector3.up * 0.3f, 1, Color.white * 1.6f);
+            Emit(_debris, pos, Mathf.RoundToInt(60 * scale), Color.Lerp(color, Color.white, 0.3f));
+            Emit(_sparks, pos, Mathf.RoundToInt(80 * scale), color * 2f);
+            Emit(_sparks, pos, Mathf.RoundToInt(30 * scale), new Color(1f, 0.75f, 0.35f) * 2f);
+            Emit(_ring, pos + Vector3.up * 0.1f, 1, color * 1.5f);
+            Emit(_ring, pos + Vector3.up * 0.12f, 1, Color.white);
         }
 
         /// <summary>Colonne de lumière à l'arrivée d'un joueur.</summary>

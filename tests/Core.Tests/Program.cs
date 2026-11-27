@@ -47,6 +47,7 @@ static class Program
         Test("déblocages-séries-primes", Unlocks);
         Test("retour-en-jeu", Revive);
         Test("sans-limite-et-départs", NoLimitAndLeave);
+        Test("donateurs", Donors);
 
         Console.WriteLine($"Tests du noyau : {_pass} réussis, {_fail} échoués");
         foreach (var f in Failures) Console.WriteLine("  ÉCHEC : " + f);
@@ -365,6 +366,25 @@ static class Program
         Check(!r.Revive("p1"), "une seule fois par manche");
         r.Eliminate("p2", EliminationReason.OutOfSpin);
         Check(r.Phase == RoundPhase.Victory && r.WinnerId == "p0" && r.Get("p1").placement == 3, "classement après un retour");
+    }
+
+    static void Donors()
+    {
+        var b = new SpinArena.Core.Live.DonorBoard();
+        b.Add("a", "Alice", "Rose", 114, 1);
+        b.Add("b", "Bob", "Doughnut", 30, 30);
+        b.Add("c", "Chloé", "Rose", 120, 1);
+        b.Add("a", "Alice", "Galaxy", 1, 1000);
+        var top = b.Top(5);
+        Check(top.Count == 3, "trois donateurs");
+        Check(top[0].userId == "a" && top[0].mainGift == "Galaxy" && top[0].mainGiftCount == 1, "Alice en tête, cadeau principal = le plus précieux");
+        Check(top[1].userId == "b" && top[1].mainGiftCount == 30, "Bob deuxième avec 30 Doughnut");
+        Check(top[2].userId == "c" && top[2].mainGift == "Rose" && top[2].mainGiftCount == 120, "Chloé : 120 Rose");
+        Check(b.RankOf("c") == 3 && b.RankOf("zz") == 0, "rang");
+        b.Add("x", "", "Rose", 0, 1);
+        Check(b.Count == 3, "zéro cadeau ignoré");
+        b.Clear();
+        Check(b.Top(5).Count == 0, "remise à zéro");
     }
 
     static void NoLimitAndLeave()

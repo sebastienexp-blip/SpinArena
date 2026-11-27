@@ -23,6 +23,8 @@ namespace SpinArena.Live
         readonly HudManager _hud;
         readonly System.Random _rng = new System.Random();
         public GiftProcessor Processor => _proc;
+        /// <summary>Classement des donateurs du live en cours (panneau en haut à droite).</summary>
+        public DonorBoard Donors { get; } = new DonorBoard();
         public int Executed { get; private set; }
         /// <summary>Statistiques : action sur la toupie du donateur, sur une autre toupie, retour en jeu, énergie pour tous.</summary>
         public int Personal { get; private set; }
@@ -43,7 +45,8 @@ namespace SpinArena.Live
             // Un spectateur qui envoie un cadeau entre dans l'arène s'il n'y est pas encore (comme avec !join).
             if (GameConfig.Current.effects.giftJoins && _br.TopOf(e.user.Key) == null) _br.Join(e.user);
             GiftIcons.Remember(e.giftName, e.giftImageUrl);
-            _proc.Receive(e, now);
+            int added = _proc.Receive(e, now);
+            if (added > 0) Donors.Add(e.user.Key, e.user.DisplayName, e.giftName, added, Mathf.Max(1, e.diamondCount));
         }
 
         /// <summary>Exécute les actions autorisées. Hors combat, elles patientent (rien n'est perdu).</summary>
