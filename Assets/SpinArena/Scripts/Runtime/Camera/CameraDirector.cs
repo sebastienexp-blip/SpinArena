@@ -55,6 +55,10 @@ namespace SpinArena.CameraRig
         /// <summary>Petit « coup de zoom » (l'angle de vue se resserre puis revient).</summary>
         public void Punch(float amount) => _fovPunch = Mathf.Max(_fovPunch, amount);
 
+        float _lowUntil, _low;
+        /// <summary>Caméra plus basse (vue de côté) pendant quelques secondes : tornade, orage — on voit la hauteur des effets.</summary>
+        public void LowAngle(float seconds) => _lowUntil = Mathf.Max(_lowUntil, Time.time + seconds);
+
         public Transform CurrentFocus => _focus;
 
         public void Focus(Transform t, float closeness)
@@ -106,7 +110,10 @@ namespace SpinArena.CameraRig
             // Portrait : caméra plus plongeante et plus proche, l'arène remplit tout l'écran (le bord déborde un peu).
             bool portrait = Cam.aspect < 1f;
             float dist = Mathf.Lerp(_arenaRadius * (portrait ? 2.0f : 2.45f) * Mathf.Clamp(disp.cameraDistance, 0.6f, 1.5f), 7f * TopScaleFactor, _closeness);
-            float pitch = Mathf.Lerp(portrait ? 64f : 52f, 30f, _closeness);
+            _low = Mathf.MoveTowards(_low, Time.time < _lowUntil ? 1f : 0f, dt * 0.8f);
+            float lowEase = _low * _low * (3f - 2f * _low);
+            float pitch = Mathf.Lerp(Mathf.Lerp(portrait ? 64f : 52f, portrait ? 38f : 34f, lowEase), 30f, _closeness);
+            dist *= 1f + 0.12f * lowEase;
             Quaternion rot = Quaternion.Euler(pitch, _orbit, 0f);
             Vector3 look = Vector3.Lerp(Vector3.zero, _smoothedFocus + Vector3.up * 0.6f, Mathf.Clamp01(_closeness * 2f));
             Vector3 pos = look - rot * Vector3.forward * dist;

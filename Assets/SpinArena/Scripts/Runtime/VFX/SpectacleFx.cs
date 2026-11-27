@@ -28,7 +28,7 @@ namespace SpinArena.VFX
             _fire = Make("Fire", 900, true, 0.35f, 0.8f, 0.5f * k, 2.5f * k, 0.7f * k, 1.7f * k, -0.35f, FireGradient(), GrowShrink());
             _smoke = Make("Smoke", 500, false, 1.4f, 3f, 0.3f * k, 1.6f * k, 1.0f * k, 2.2f * k, -0.08f, SmokeGradient(), Grow(2.6f));
             _embers = Make("Embers", 700, true, 0.8f, 1.8f, 3f * k, 10f * k, 0.06f * k, 0.16f * k, 0.6f, EmberGradient(), null, ParticleSystemRenderMode.Stretch);
-            _dust = Make("Dust", 500, false, 0.9f, 1.8f, 2f * k, 7f * k, 0.8f * k, 1.8f * k, 0.05f, DustGradient(), Grow(2.2f));
+            _dust = Make("Dust", 500, false, 0.9f, 1.8f, 2f * k, 7f * k, 0.5f * k, 1.1f * k, 0.05f, DustGradient(), Grow(2f));
             _electric = Make("Electric", 600, true, 0.12f, 0.35f, 6f * k, 16f * k, 0.04f * k, 0.1f * k, 0.2f, ElectricGradient(), null, ParticleSystemRenderMode.Stretch);
             _leaves = Make("Leaves", 300, true, 0.8f, 1.6f, 2f * k, 6f * k, 0.12f * k, 0.25f * k, 0.25f, LeafGradient(), null);
             BuildOverlay();
@@ -81,9 +81,9 @@ namespace SpinArena.VFX
             return g;
         }
         static Gradient FireGradient() => G((new Color(1f, 1f, 0.85f, 1f), 0f), (new Color(1f, 0.8f, 0.3f, 1f), 0.2f), (new Color(1f, 0.4f, 0.08f, 0.85f), 0.5f), (new Color(0.6f, 0.08f, 0.02f, 0f), 1f));
-        static Gradient SmokeGradient() => G((new Color(0.35f, 0.33f, 0.36f, 0f), 0f), (new Color(0.3f, 0.29f, 0.32f, 0.7f), 0.15f), (new Color(0.22f, 0.21f, 0.24f, 0.45f), 0.6f), (new Color(0.2f, 0.2f, 0.22f, 0f), 1f));
+        static Gradient SmokeGradient() => G((new Color(0.22f, 0.2f, 0.22f, 0f), 0f), (new Color(0.18f, 0.17f, 0.19f, 0.65f), 0.15f), (new Color(0.13f, 0.12f, 0.14f, 0.4f), 0.6f), (new Color(0.1f, 0.1f, 0.12f, 0f), 1f));
         static Gradient EmberGradient() => G((new Color(1f, 0.95f, 0.6f, 1f), 0f), (new Color(1f, 0.55f, 0.1f, 1f), 0.4f), (new Color(0.8f, 0.15f, 0.02f, 0f), 1f));
-        static Gradient DustGradient() => G((new Color(0.62f, 0.56f, 0.5f, 0f), 0f), (new Color(0.6f, 0.55f, 0.5f, 0.55f), 0.12f), (new Color(0.5f, 0.46f, 0.42f, 0.3f), 0.6f), (new Color(0.5f, 0.46f, 0.42f, 0f), 1f));
+        static Gradient DustGradient() => G((new Color(0.5f, 0.45f, 0.4f, 0f), 0f), (new Color(0.48f, 0.43f, 0.38f, 0.42f), 0.12f), (new Color(0.4f, 0.36f, 0.32f, 0.22f), 0.6f), (new Color(0.4f, 0.36f, 0.32f, 0f), 1f));
         static Gradient ElectricGradient() => G((Color.white, 0f), (new Color(0.7f, 0.9f, 1f, 1f), 0.4f), (new Color(0.3f, 0.5f, 1f, 0f), 1f));
         static Gradient LeafGradient() => G((new Color(0.8f, 1f, 0.6f, 1f), 0f), (new Color(0.3f, 0.9f, 0.4f, 0.9f), 0.5f), (new Color(0.1f, 0.6f, 0.2f, 0f), 1f));
         static AnimationCurve GrowShrink() => new AnimationCurve(new Keyframe(0f, 0.4f), new Keyframe(0.25f, 1f), new Keyframe(1f, 0.15f));
@@ -266,22 +266,44 @@ namespace SpinArena.VFX
             var d = GetDecal(false, ScorchTex);
             if (d == null) return;
             d.t.gameObject.SetActive(true);
-            d.t.position = pos + Vector3.up * 0.03f;
-            d.t.rotation = Quaternion.Euler(0f, Random.value * 360f, 0f);
             d.size = size * K; d.grow = 0f; d.born = Time.time; d.life = seconds; d.color = tint; d.pulse = false;
+            PlaceOnFloor(d.t, pos, d.size, Random.value * 360f, 0.04f);
             d.t.localScale = Vector3.one * d.size;
         }
 
         /// <summary>Lueur au sol (bord de lave, cercle d'alerte qui clignote).</summary>
-        public void GroundGlow(Vector3 pos, float size, float seconds, Color c, bool pulse, float growTo = 0f)
+        public void GroundGlow(Vector3 pos, float size, float seconds, Color c, bool pulse, float growTo = 0f, bool ring = true)
         {
-            var d = GetDecal(true, RingTex);
+            var d = GetDecal(true, ring ? (Texture)RingTex : MaterialLibrary.SoftDot);
             if (d == null) return;
             d.t.gameObject.SetActive(true);
-            d.t.position = pos + Vector3.up * 0.05f;
-            d.t.rotation = Quaternion.identity;
             d.size = size * K; d.grow = growTo > 0f ? growTo * K : 0f; d.born = Time.time; d.life = seconds; d.color = c; d.pulse = pulse;
+            PlaceOnFloor(d.t, pos, Mathf.Max(d.size, d.grow), 0f, 0.07f);
             d.t.localScale = Vector3.one * d.size;
+        }
+
+        /// <summary>
+        /// Pose une trace à plat sur le sol de l'arène (qui est en cuvette) : inclinée comme la pente
+        /// et légèrement surélevée selon sa taille pour ne pas s'enfoncer dans le sol.
+        /// </summary>
+        static void PlaceOnFloor(Transform t, Vector3 pos, float size, float yaw, float lift)
+        {
+            var arena = GameManager.Instance != null ? GameManager.Instance.Arena : null;
+            Vector3 flat = new Vector3(pos.x, 0f, pos.z);
+            float r = flat.magnitude;
+            Vector3 normal = Vector3.up;
+            float y = pos.y;
+            if (arena != null)
+            {
+                y = arena.SurfaceHeight(r);
+                const float e = 0.25f;
+                float slope = (arena.SurfaceHeight(r + e) - arena.SurfaceHeight(Mathf.Max(0f, r - e))) / (2f * e);
+                Vector3 radial = r > 0.01f ? flat / r : Vector3.right;
+                normal = (Vector3.up - radial * slope).normalized;
+                lift += Mathf.Abs(slope) * size * 0.08f + size * 0.01f;
+            }
+            t.position = new Vector3(pos.x, y, pos.z) + normal * lift;
+            t.rotation = Quaternion.FromToRotation(Vector3.up, normal) * Quaternion.Euler(0f, yaw, 0f);
         }
 
         void UpdateDecals()
@@ -526,10 +548,11 @@ namespace SpinArena.VFX
             Emit(_fire, pos + Vector3.up * 0.6f, 8, Color.white, Vector3.up * 5f * k, 2.4f * k, 0.6f);
             Emit(_embers, pos, Mathf.RoundToInt(70 * scale), Color.white);
             for (int i = 0; i < 10; i++) Emit(_smoke, pos + Vector3.up * (0.5f + i * 0.35f) * k, 1, Color.white, Vector3.up * Random.Range(1f, 3f) * k + Random.insideUnitSphere * k, Random.Range(1.6f, 2.8f) * k, Random.Range(2f, 3.4f));
-            DustRing(pos, Mathf.RoundToInt(26 * scale), 7f * scale);
-            Scorch(pos, 3.6f * scale, 9f, new Color(0.05f, 0.03f, 0.03f, 0.9f));
-            GroundGlow(pos, 3.2f * scale, 3.5f, new Color(1f, 0.4f, 0.08f, 0.9f), false, 4.2f * scale);
-            LightFlash(pos + Vector3.up * 1.5f, new Color(1f, 0.55f, 0.2f), 18f * scale, 14f, 0.7f);
+            DustRing(pos, Mathf.RoundToInt(16 * scale), 6f * scale);
+            Scorch(pos, 3f * scale, 9f, new Color(0.05f, 0.03f, 0.03f, 0.9f));
+            // Lave encore rougeoyante au fond du cratère.
+            GroundGlow(pos, 2.2f * scale, 2.5f, new Color(1f, 0.38f, 0.06f, 0.9f), false, 2.6f * scale, false);
+            LightFlash(pos + Vector3.up * 1.5f, new Color(1f, 0.55f, 0.2f), 9f * scale, 12f, 0.6f);
         }
 
         /// <summary>Impact de foudre : gerbe électrique, arcs au sol, fumée, trace brûlée.</summary>
@@ -543,10 +566,10 @@ namespace SpinArena.VFX
                 Emit(_fire, pos + Vector3.up * 0.3f, 1, new Color(0.75f, 0.9f, 1f), dir * 4f * k, 1.4f * k, 0.3f);
             }
             for (int i = 0; i < 6; i++) Emit(_smoke, pos + Vector3.up * (0.4f + i * 0.3f) * k, 1, Color.white, Vector3.up * 1.8f * k + Random.insideUnitSphere * 0.6f * k, 1.8f * k, 2.4f);
-            DustRing(pos, 22, 6f);
-            Scorch(pos, 3f, 8f, new Color(0.04f, 0.04f, 0.07f, 0.9f));
-            GroundGlow(pos, 2.4f, 1.2f, new Color(c.r, c.g, c.b, 1f), false, 5f);
-            LightFlash(pos + Vector3.up * 2f, Color.Lerp(c, Color.white, 0.5f), 45f, 26f, 0.5f);
+            DustRing(pos, 14, 5f);
+            Scorch(pos, 2.6f, 8f, new Color(0.04f, 0.04f, 0.07f, 0.9f));
+            GroundGlow(pos, 1.6f, 1f, new Color(c.r, c.g, c.b, 1f), false, 3.4f);
+            LightFlash(pos + Vector3.up * 2f, Color.Lerp(c, Color.white, 0.5f), 14f, 16f, 0.45f);
         }
     }
 }

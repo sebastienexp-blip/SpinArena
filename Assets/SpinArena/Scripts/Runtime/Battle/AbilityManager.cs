@@ -156,6 +156,7 @@ namespace SpinArena.Battle
         IEnumerator StormRoutine(TopController src, System.Collections.Generic.List<TopController> targets)
         {
             Sfx?.StormSky(0.8f);
+            CameraDirector.Instance.LowAngle(0.8f + targets.Count * 0.85f + 0.8f);
             AudioManager.Play("thunder", 0.6f, 0.2f, 0.1f);
             yield return new WaitForSeconds(0.6f);
             var color = new Color(0.65f, 0.8f, 1f);
@@ -388,6 +389,7 @@ namespace SpinArena.Battle
             float start = Time.time, angle = Random.value * Mathf.PI * 2f, spin = 0f;
             CameraDirector.Instance.Shake(0.35f);
             Sfx?.StormSky(0.55f);
+            CameraDirector.Instance.LowAngle(duration);
             var color = new Color(0.85f, 0.75f, 1f);
             while (Time.time - start < duration)
             {

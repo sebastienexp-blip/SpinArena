@@ -126,8 +126,8 @@ namespace SpinArena
                 float ft = Time.time - _fightStart;
                 // Essai de la foudre (12 s) et de la pluie de météores (16 s), avec captures pendant l'effet.
                 if (!_stormDone && ft > 12f) { _stormDone = true; bool ok = GameManager.Instance.Abilities.LightningStorm(GameManager.Instance.Battle.Fighting().FirstOrDefault(), 4); Log("Foudre déclenchée : " + (ok ? "oui" : "non")); }
-                if (_stormDone && !_stormShot1 && ft > 13.15f) { _stormShot1 = true; Shot("foudre"); }
-                if (_stormDone && !_stormShot2 && ft > 14.05f) { _stormShot2 = true; Shot("foudre"); }
+                if (_stormDone && !_stormShot1 && ft > 13.2f) { _stormShot1 = true; Shot("foudre"); }
+                if (_stormDone && !_stormShot2 && ft > 14.15f) { _stormShot2 = true; Shot("foudre"); }
                 if (!_meteorDone && ft > 16f) { _meteorDone = true; GameManager.Instance.Abilities.MeteorStorm(1); Log("Météores déclenchés"); }
                 if (_meteorDone && !_meteorShot1 && ft > 16.9f) { _meteorShot1 = true; Shot("meteores"); }
                 if (_meteorDone && !_meteorShot2 && ft > 18.2f) { _meteorShot2 = true; Shot("meteores"); }

@@ -145,7 +145,7 @@ namespace SpinArena.VFX
         public void SkyBolt(Vector3 target, Color color)
         {
             float k = FxScale;
-            Vector3 top = target + new Vector3(Random.Range(-4f, 4f), 36f * Mathf.Max(1f, k * 0.8f), Random.Range(-4f, 4f));
+            Vector3 top = target + new Vector3(Random.Range(-4f, 4f), 22f * Mathf.Max(1f, k * 0.8f), Random.Range(-4f, 4f));
             var b = GetBolt(30);
             if (b == null) return;
             b.from = top; b.to = target; b.color = color; b.sky = true; b.amp = 0.07f;
@@ -213,13 +213,13 @@ namespace SpinArena.VFX
                 {
                     // Clignotements d'un vrai éclair : allumé, éteint, rallumé (nouvelle forme), puis s'éteint en douceur.
                     float t = now - b.born;
-                    bool on = t < 0.07f || (t > 0.11f && t < 0.19f) || t > 0.23f;
+                    bool on = t < 0.08f || (t > 0.1f && t < 0.18f) || t > 0.2f;
                     bool wasOn = b.line.enabled;
                     b.line.enabled = on; b.glow.enabled = on;
                     if (on && !wasOn && t > 0.1f) Jitter(b);
-                    if (t > 0.23f)
+                    if (t > 0.2f)
                     {
-                        float fade = Mathf.Clamp01(1f - (t - 0.23f) / Mathf.Max(0.05f, b.until - b.born - 0.23f));
+                        float fade = Mathf.Clamp01(1f - (t - 0.2f) / Mathf.Max(0.05f, b.until - b.born - 0.2f));
                         b.line.widthMultiplier = fade; b.glow.widthMultiplier = fade;
                     }
                     else { b.line.widthMultiplier = 1f; b.glow.widthMultiplier = 1f; }
@@ -311,18 +311,18 @@ namespace SpinArena.VFX
             _funnel.rotation = Quaternion.Euler(sway, phase * 12f, 0f);
             _funnel.localScale = new Vector3(radius, k, radius);
             float[] speeds = { -95f, -150f, -210f };
-            float[] alphas = { 0.75f, 0.55f, 0.35f };
+            float[] alphas = { 0.92f, 0.75f, 0.45f };
             for (int i = 0; i < 3; i++)
             {
                 _layers[i].localRotation = Quaternion.Euler(0f, phase * speeds[i], 0f);
-                var c = i < 2 ? new Color(0.58f, 0.54f, 0.5f, alphas[i] * alpha) : new Color(0.75f, 0.85f, 1f, alphas[i] * alpha);
+                var c = i < 2 ? new Color(0.8f, 0.76f, 0.72f, alphas[i] * alpha) : new Color(0.8f, 0.88f, 1f, alphas[i] * alpha);
                 MaterialLibrary.SetColor(_layerMats[i], c);
                 _layerMats[i].SetTextureOffset("_BaseMap", new Vector2(phase * (0.15f + i * 0.1f), -phase * (0.45f + i * 0.2f)));
             }
             var sfx = SpectacleFx.Instance;
             if (sfx == null || alpha < 0.2f) return;
             // Base : poussière qui tourbillonne et s'échappe, débris arrachés du sol.
-            if (Random.value < 0.7f) sfx.DustRing(center, 3, 4f);
+            sfx.DustRing(center, 4, 5f);
             float top = 10f * k;
             // Nuage d'orage tournant au sommet.
             if (Random.value < 0.6f)
@@ -574,7 +574,7 @@ namespace SpinArena.VFX
             if (big && SpectacleFx.Instance != null)
             {
                 float eta = (from - target).magnitude / m.speed;
-                SpectacleFx.Instance.GroundGlow(target, 4.5f, eta, new Color(1f, 0.25f, 0.1f, 0.9f), true, 1.6f);
+                SpectacleFx.Instance.GroundGlow(target, 3.2f, eta, new Color(1f, 0.25f, 0.1f, 0.9f), true, 1.3f);
             }
             return m;
         }
