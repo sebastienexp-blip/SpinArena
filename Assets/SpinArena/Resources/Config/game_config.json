@@ -39,9 +39,9 @@
             {
                 "giftName": "Weights",
                 "minDiamonds": 0,
-                "tier": 0,
-                "effect": "heavy",
-                "perUserCooldown": 2.0,
+                "tier": 1,
+                "effect": "special_attack",
+                "perUserCooldown": 6.0,
                 "coins": 1
             },
             {
@@ -63,9 +63,9 @@
             {
                 "giftName": "Mini Speaker",
                 "minDiamonds": 0,
-                "tier": 0,
-                "effect": "sound_wave",
-                "perUserCooldown": 1.0,
+                "tier": 1,
+                "effect": "barrage",
+                "perUserCooldown": 10.0,
                 "coins": 1
             },
             {
@@ -79,9 +79,9 @@
             {
                 "giftName": "Heart Me",
                 "minDiamonds": 0,
-                "tier": 0,
-                "effect": "wheel",
-                "perUserCooldown": 0.0,
+                "tier": 1,
+                "effect": "super_heal",
+                "perUserCooldown": 6.0,
                 "coins": 1
             },
             {
@@ -143,48 +143,32 @@
             {
                 "giftName": "Cap",
                 "minDiamonds": 0,
-                "tier": 1,
-                "effect": "special_attack",
-                "perUserCooldown": 6.0,
+                "tier": 2,
+                "effect": "royal",
+                "perUserCooldown": 10.0,
                 "coins": 99
             },
             {
                 "giftName": "Hand Hearts",
                 "minDiamonds": 0,
                 "tier": 2,
-                "effect": "super_heal",
-                "perUserCooldown": 6.0,
+                "effect": "tornado",
+                "perUserCooldown": 60.0,
                 "coins": 100
             },
             {
                 "giftName": "Sunglasses",
                 "minDiamonds": 0,
-                "tier": 2,
-                "effect": "barrage",
-                "perUserCooldown": 10.0,
-                "coins": 199
-            },
-            {
-                "giftName": "TikTok Crown",
-                "minDiamonds": 0,
-                "tier": 2,
-                "effect": "royal",
-                "perUserCooldown": 10.0,
-                "coins": 299
-            },
-            {
-                "giftName": "Money Gun",
-                "minDiamonds": 0,
-                "tier": 2,
-                "effect": "tornado",
+                "tier": 3,
+                "effect": "meteor_storm",
                 "perUserCooldown": 60.0,
-                "coins": 500
+                "coins": 199
             },
             {
                 "giftName": "Galaxy",
                 "minDiamonds": 0,
                 "tier": 3,
-                "effect": "meteor_storm",
+                "effect": "giant",
                 "perUserCooldown": 60.0,
                 "coins": 1000
             },
@@ -192,7 +176,7 @@
                 "giftName": "",
                 "minDiamonds": 1000,
                 "tier": 3,
-                "effect": "meteor_storm",
+                "effect": "giant",
                 "perUserCooldown": 60.0
             },
             {

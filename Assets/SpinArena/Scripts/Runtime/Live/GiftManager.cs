@@ -114,7 +114,7 @@ namespace SpinArena.Live
             else if (forWhom != null) { label += " pour " + forWhom; ForOthers++; }
             else Personal++;
             // Grosses actions : ralenti avec zoom.
-            if (effect == "royal" || effect == "barrage" || effect == "tornado" || effect == "meteor_storm" || effect == "lightning" || (effect == "special_attack" && a.diamonds >= 50))
+            if (effect == "royal" || effect == "barrage" || effect == "tornado" || effect == "meteor_storm" || effect == "lightning" || effect == "giant" || (effect == "special_attack" && a.diamonds >= 50))
                 CameraRig.CinematicDirector.Instance?.Play(arenaEvent ? null : t?.transform, 0.35f, 1f, 0.8f, 0.75f, true);
             GameManager.Instance?.Show?.OnGiftActivated(a.userId, a.userName);
             Audio.AudioManager.Play("gift", 0.8f, 0.15f);
@@ -148,6 +148,10 @@ namespace SpinArena.Live
                     _ab.MeteorStorm(n);
                     _hud.Banner("PLUIE DE MÉTÉORES", null, 2.5f, new Color(1f, 0.6f, 0.2f));
                     return "pluie de météores";
+                case "giant":
+                    if (!_ab.GiantTop(t)) return null;
+                    _hud.Banner("TOUPIE GÉANTE", t.DisplayName, 2.5f, new Color(0.75f, 0.5f, 1f));
+                    return "toupie géante";
                 case "lightning":
                     if (!_ab.LightningStorm(t, Mathf.Clamp(2 + n, 3, 8))) return null;
                     _hud.Banner("FOUDRE", null, 2f, new Color(0.65f, 0.85f, 1f));

@@ -138,6 +138,89 @@ namespace SpinArena.Battle
             CameraDirector.Instance.Shake(0.1f);
         }
 
+        // ------------------------------------------------------------------ toupie géante (Galaxy)
+
+        /// <summary>
+        /// La toupie du donateur grossit jusqu'à occuper presque toute l'arène pendant 9 secondes : elle se place
+        /// au centre, devient invincible et repousse toutes les autres vers le bord (choc, éclairs, petits dégâts).
+        /// </summary>
+        public bool GiantTop(TopController t)
+        {
+            if (!Ok(t) || t.IsGiant) return false;
+            StartCoroutine(GiantRoutine(t));
+            return true;
+        }
+
+        IEnumerator GiantRoutine(TopController t)
+        {
+            var arena = FindArena();
+            float R = arena != null ? arena.Radius : 16f;
+            const float duration = 9f;
+            float baseR = Mathf.Max(0.1f, t.VisualRadius);
+            t.Giant(R * 0.7f / baseR, duration);
+            var color = new Color(0.75f, 0.5f, 1f);
+            AudioManager.Play("grow", 1f, 0.2f, 0f);
+            AudioManager.Play("thunder", 0.8f, 0.2f, 0f);
+            Sfx?.StormSky(0.5f);
+            Sfx?.ScreenFlash(0.5f);
+            Sfx?.PowerAura(t.transform, duration, color);
+            RenderingSetup.Pulse(0.8f);
+            CameraDirector.Instance.Shake(0.4f);
+            float start = Time.time, nextArc = 0f, nextDust = 0f;
+            while (Time.time - start < duration + 1.5f && t != null && t.State == TopState.Fighting)
+            {
+                float gr = t.VisualRadius;
+                bool active = Time.time - start < duration;
+                if (active)
+                {
+                    // La géante glisse au centre et y reste.
+                    Vector3 p = t.Body.position;
+                    Vector3 center = new Vector3(0f, arena != null ? arena.SurfaceHeight(0f) : p.y, 0f);
+                    t.Body.position = Vector3.Lerp(p, new Vector3(center.x, p.y, center.z), Time.deltaTime * 2f);
+                    t.Body.SetVelocity(Vector3.zero);
+                    // Les autres toupies sont repoussées jusqu'à son bord.
+                    foreach (var o in _br.Fighting().ToList())
+                    {
+                        if (o == t) continue;
+                        Vector3 d = (o.transform.position - t.transform.position).Flat();
+                        float dist = d.magnitude, edge = gr + o.VisualRadius;
+                        if (dist >= edge) continue;
+                        Vector3 dir = dist > 0.01f ? d / dist : Random.insideUnitSphere.Flat().normalized;
+                        float r = Mathf.Min((t.transform.position.Flat() + dir * edge).magnitude, R * 0.95f);
+                        Vector3 np = t.transform.position.Flat() + dir * edge;
+                        np = np.normalized * r;
+                        np.y = (arena != null ? arena.SurfaceHeight(r) : o.transform.position.y) + 0.05f;
+                        o.Body.position = np;
+                        o.Body.SetVelocity(Vector3.Cross(Vector3.up, dir) * 6f + dir * 3f);
+                        o.TakeDamage(o.MaxSpin * 0.03f * Time.deltaTime, t.PlayerId);
+                        if (Time.time > nextDust) Sfx?.DustRing(np, 4, 3f);
+                    }
+                    if (Time.time > nextDust) nextDust = Time.time + 0.25f;
+                    // Éclairs qui jaillissent du bord de la géante vers les toupies proches.
+                    if (Time.time > nextArc)
+                    {
+                        nextArc = Time.time + 0.35f;
+                        var near = _br.Fighting().Where(o => o != t).OrderBy(o => (o.transform.position - t.transform.position).sqrMagnitude).FirstOrDefault();
+                        if (near != null)
+                        {
+                            Vector3 dir = (near.transform.position - t.transform.position).Flat().normalized;
+                            Vfx.Lightning(t.transform.position + dir * gr * 0.9f + Vector3.up * gr * 0.4f, near.transform.position + Vector3.up * 0.5f, color, 0.3f, 0.3f);
+                        }
+                        Sfx?.Embers(t.transform.position + Random.insideUnitSphere.Flat() * gr + Vector3.up * gr * 0.5f, 6);
+                    }
+                }
+                yield return null;
+            }
+            // Retour à la taille normale : grosse onde de choc.
+            if (t != null && t.State == TopState.Fighting)
+            {
+                Vfx.Shockwave(t.transform.position, color);
+                Sfx?.DustRing(t.transform.position, 30, 9f);
+                CameraDirector.Instance.Shake(0.3f);
+            }
+            Sfx?.StormSky(0f);
+        }
+
         // ------------------------------------------------------------------ foudre
 
         /// <summary>
@@ -409,9 +492,18 @@ namespace SpinArena.Battle
                     float dist = d.magnitude;
                     if (dist > reach) continue;
                     float k = 1f - dist / reach;
-                    Vector3 swirl = Vector3.Cross(Vector3.up, d.normalized) * 22f - d.normalized * 9f;
+                    Vector3 dir = dist > 0.01f ? d / dist : Vector3.right;
+                    // Aspirée vers le cœur, elle tourne autour de la colonne…
+                    Vector3 swirl = Vector3.Cross(Vector3.up, dir) * 26f - dir * (12f + 10f * k);
                     o.Body.AddForce(swirl * k, ForceMode.Acceleration);
-                    o.TakeDamage(o.MaxSpin * 0.025f * k * Time.deltaTime, null);
+                    // … et elle est soulevée dans les airs, plus haut près du centre, avec un mouvement de vague.
+                    float ground = arena != null ? arena.SurfaceHeight(o.transform.position.Flat().magnitude) : 0f;
+                    float targetH = Mathf.Lerp(1.2f, 7f, k) * (1f + 0.25f * Mathf.Sin(Time.time * 3f + o.GetInstanceID()));
+                    float h = o.transform.position.y - ground;
+                    float lift = -Physics.gravity.y * (h < targetH ? 1.6f : 0.6f) * Mathf.Clamp01(k * 2.5f);
+                    o.Body.AddForce(Vector3.up * lift, ForceMode.Acceleration);
+                    o.TakeDamage(o.MaxSpin * 0.03f * k * Time.deltaTime, null);
+                    if (h > 1f && Random.value < 0.15f) Sfx?.DustAt(o.transform.position, Vector3.down * 2f, 0.7f);
                 }
                 if (Random.value < 0.05f) CameraDirector.Instance.Shake(0.08f);
                 yield return null;

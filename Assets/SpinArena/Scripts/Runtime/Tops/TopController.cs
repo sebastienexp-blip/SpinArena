@@ -344,7 +344,7 @@ namespace SpinArena.Tops
         void UpdateExtras()
         {
             var show = GameConfig.Current.show;
-            float k = TopScale * _sizeVisual;
+            float k = TopScale * _sizeVisual * _giant;
             if (_crown != null && _crown.gameObject.activeSelf)
             {
                 _crown.localPosition = new Vector3(0f, 0.5f * k, 0f);
@@ -388,7 +388,7 @@ namespace SpinArena.Tops
 
         void ApplySize()
         {
-            if (_visualRoot != null) _visualRoot.localScale = Vector3.one * TopScale * _sizeVisual;
+            if (_visualRoot != null) _visualRoot.localScale = Vector3.one * TopScale * _sizeVisual * _giant;
             _col.radius = BodyRadius * _sizeVisual;
             _col.center = new Vector3(0f, BodyRadius * _sizeVisual, 0f);
             if (Def != null) _rb.mass = Def.Mass * _sizeVisual * _sizeVisual * (Time.time < _heavyUntil ? _heavyMult : 1f);
@@ -460,9 +460,20 @@ namespace SpinArena.Tops
         public bool ShieldActive => Time.time < _shieldUntil;
         public bool PoweredUp => Time.time < _powerUntil || Time.time < _atkUntil;
 
+        // ------------------------------------------------------------------ toupie géante (Galaxy)
+
+        float _giant = 1f, _giantTarget = 1f, _giantUntil;
+        /// <summary>Vrai pendant la transformation en toupie géante.</summary>
+        public bool IsGiant => _giant > 1.3f || Time.time < _giantUntil;
+        /// <summary>Rayon visible actuel (géante comprise).</summary>
+        public float VisualRadius => 0.42f * TopScale * _sizeVisual * _giant;
+        /// <summary>La toupie grossit jusqu'à <paramref name="mult"/> fois sa taille pendant <paramref name="seconds"/> secondes.</summary>
+        public void Giant(float mult, float seconds) { _giantTarget = Mathf.Max(1f, mult); _giantUntil = Time.time + seconds; }
+
         public void TakeDamage(float amount, string attackerId)
         {
             if (State != TopState.Fighting || amount <= 0f) return;
+            if (IsGiant) return; // la géante est invincible le temps de sa transformation
             Spin = Mathf.Max(0f, Spin - amount);
             if (!string.IsNullOrEmpty(attackerId)) { _lastAttacker = attackerId; _lastHitTime = Time.time; }
         }
@@ -626,7 +637,10 @@ namespace SpinArena.Tops
                 c.a = 0.25f + 0.55f * f;
                 MaterialLibrary.SetColor(_blurMat, c);
             }
-            if (Mathf.Abs(_sizeVisual - _size) > 0.001f || Time.time < _heavyUntil + 0.1f)
+            float giantGoal = Time.time < _giantUntil && State == TopState.Fighting ? _giantTarget : 1f;
+            bool giantMoving = Mathf.Abs(_giant - giantGoal) > 0.001f;
+            if (giantMoving) _giant = Mathf.MoveTowards(_giant, giantGoal, dt * Mathf.Max(1f, _giantTarget) * 0.8f);
+            if (giantMoving || Mathf.Abs(_sizeVisual - _size) > 0.001f || Time.time < _heavyUntil + 0.1f)
             {
                 _sizeVisual = Mathf.MoveTowards(_sizeVisual, _size, dt * 0.8f);
                 ApplySize();
@@ -671,7 +685,7 @@ namespace SpinArena.Tops
             Quaternion face = Quaternion.LookRotation(transform.position - cam.transform.position);
             Vector3 up = cam.transform.up;
             // Photo posée sur le dessus de la toupie, inclinée vers la caméra pour rester lisible ; elle ne tourne pas.
-            float k = TopScale * _sizeVisual;
+            float k = TopScale * _sizeVisual * _giant;
             Vector3 toCam = (cam.transform.position - transform.position).normalized;
             // Médaillon presque à plat, comme une vraie toupie vue d'en haut, et assez grand pour couvrir le dessus.
             Vector3 normal = Vector3.Slerp(Vector3.up, toCam, 0.3f);

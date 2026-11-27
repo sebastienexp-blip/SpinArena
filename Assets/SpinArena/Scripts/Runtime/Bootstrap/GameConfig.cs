@@ -176,7 +176,7 @@ namespace SpinArena
         public SoundSettings audio = new SoundSettings();
         public ShowSettings show = new ShowSettings();
         /// <summary>Version des réglages enregistrés (2 = toupies illimitées par défaut).</summary>
-        public int configVersion = 5;
+        public int configVersion = 6;
 
         public static GameConfig Current => GameManager.Instance != null ? GameManager.Instance.Config : _fallback ?? (_fallback = new GameConfig());
         static GameConfig _fallback;
@@ -232,6 +232,19 @@ namespace SpinArena
             {
                 foreach (var r in cfg.gifts.rules) if (r.coins <= 0 && !string.IsNullOrEmpty(r.giftName)) r.coins = GiftSettings.DefaultCoins(r.giftName);
                 cfg.configVersion = 5;
+            }
+            // Version 6 : Galaxy = toupie géante ; tout le reste sur des cadeaux à 200 pièces maximum.
+            if (cfg.configVersion < 6)
+            {
+                var def = GiftSettings.CreateDefault().rules;
+                cfg.gifts.rules.RemoveAll(r => r.giftName == "TikTok Crown" || r.giftName == "Money Gun");
+                foreach (var r in cfg.gifts.rules)
+                {
+                    if (string.IsNullOrEmpty(r.giftName)) { if (r.minDiamonds == 1000 && r.effect == "meteor_storm") r.effect = "giant"; continue; }
+                    var d = def.Find(x => x.giftName == r.giftName);
+                    if (d != null) { r.effect = d.effect; r.tier = d.tier; r.perUserCooldown = d.perUserCooldown; r.coins = d.coins; }
+                }
+                cfg.configVersion = 6;
             }
             // 0 = illimité ; sinon au moins 2 joueurs.
             cfg.round.maxParticipants = cfg.round.maxParticipants <= 0 ? 0 : Mathf.Max(2, cfg.round.maxParticipants);

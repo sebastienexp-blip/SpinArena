@@ -23,7 +23,7 @@ namespace SpinArena
         readonly List<string> _lines = new List<string>();
         readonly List<float> _fightDurations = new List<float>();
         float _fightStart;
-        bool _tornadoShot2;
+        bool _tornadoShot2, _giantDone, _giantShot;
         bool _stormDone, _stormShot1, _stormShot2, _meteorDone, _meteorShot1, _meteorShot2;
         bool _done, _tornadoDone, _tornadoShot, _reviveDone, _reviveShot, _closeupDone, _closeupShot;
         Tops.TopController _closeupTarget;
@@ -131,6 +131,8 @@ namespace SpinArena
                 if (!_meteorDone && ft > 16f) { _meteorDone = true; GameManager.Instance.Abilities.MeteorStorm(1); Log("Météores déclenchés"); }
                 if (_meteorDone && !_meteorShot1 && ft > 16.9f) { _meteorShot1 = true; Shot("meteores"); }
                 if (_meteorDone && !_meteorShot2 && ft > 18.2f) { _meteorShot2 = true; Shot("meteores"); }
+                if (!_giantDone && ft > 28f) { _giantDone = true; bool ok = GameManager.Instance.Abilities.GiantTop(GameManager.Instance.Battle.Fighting().FirstOrDefault()); Log("Toupie géante : " + (ok ? "oui" : "non")); }
+                if (_giantDone && !_giantShot && ft > 30.5f) { _giantShot = true; Shot("geante"); }
                 if (!_tornadoDone && ft > 20f) { _tornadoDone = true; GameManager.Instance.Abilities.Tornado(); Log("Tornade déclenchée"); }
                 if (_tornadoDone && !_tornadoShot && ft > 22.5f) { _tornadoShot = true; Shot("tornade"); }
                 if (_tornadoDone && !_tornadoShot2 && ft > 24.5f) { _tornadoShot2 = true; Shot("tornade"); }
