@@ -105,8 +105,8 @@ namespace SpinArena.CameraRig
             // Vue d'ensemble : toute l'arène tient dans un écran 16:9 (caméra en hauteur, inclinée).
             // Portrait : caméra plus plongeante et plus proche, l'arène remplit tout l'écran (le bord déborde un peu).
             bool portrait = Cam.aspect < 1f;
-            float dist = Mathf.Lerp(_arenaRadius * (portrait ? 2.2f : 2.45f) * Mathf.Clamp(disp.cameraDistance, 0.6f, 1.5f), 7f * TopScaleFactor, _closeness);
-            float pitch = Mathf.Lerp(portrait ? 60f : 52f, 30f, _closeness);
+            float dist = Mathf.Lerp(_arenaRadius * (portrait ? 2.0f : 2.45f) * Mathf.Clamp(disp.cameraDistance, 0.6f, 1.5f), 7f * TopScaleFactor, _closeness);
+            float pitch = Mathf.Lerp(portrait ? 64f : 52f, 30f, _closeness);
             Quaternion rot = Quaternion.Euler(pitch, _orbit, 0f);
             Vector3 look = Vector3.Lerp(Vector3.zero, _smoothedFocus + Vector3.up * 0.6f, Mathf.Clamp01(_closeness * 2f));
             Vector3 pos = look - rot * Vector3.forward * dist;

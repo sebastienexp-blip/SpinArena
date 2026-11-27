@@ -84,7 +84,7 @@ namespace SpinArena
         public float knockback = 1f;       // force des projections
         public float spinDecay = 1f;       // perte d'énergie naturelle
         public float speed = 1f;           // vitesse de déplacement
-        public float topScale = 2.3f;      // taille de base des toupies (grosses, photo bien visible)
+        public float topScale = 2.7f;      // taille de base des toupies (grosses, photo bien visible)
         public float maxSize = 1.8f;       // taille maximale (tapotements, cadeaux)
         public float launchPower = 7.5f;   // élan au lancement
     }
@@ -218,7 +218,7 @@ namespace SpinArena
             // Réglages enregistrés par une ancienne version (limite 5..100) : on passe en illimité, comme demandé.
             if (cfg.configVersion < 2) { cfg.round.maxParticipants = 0; cfg.configVersion = 2; }
             // Version 3 : nouveau style (grosses toupies avec photo, arène plein écran).
-            if (cfg.configVersion < 3) { cfg.tuning.topScale = Mathf.Max(cfg.tuning.topScale, 2.3f); cfg.configVersion = 3; }
+            if (cfg.configVersion < 3) { cfg.tuning.topScale = Mathf.Max(cfg.tuning.topScale, 2.7f); cfg.configVersion = 3; }
             // 0 = illimité ; sinon au moins 2 joueurs.
             cfg.round.maxParticipants = cfg.round.maxParticipants <= 0 ? 0 : Mathf.Max(2, cfg.round.maxParticipants);
             return cfg;

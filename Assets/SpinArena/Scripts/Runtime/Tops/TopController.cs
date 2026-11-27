@@ -670,7 +670,7 @@ namespace SpinArena.Tops
             Vector3 normal = Vector3.Slerp(Vector3.up, toCam, 0.3f);
             _photo.transform.position = transform.position + Vector3.up * (0.45f * k) + normal * 0.02f;
             _photo.transform.rotation = Quaternion.LookRotation(-normal, cam.transform.up);
-            _photo.transform.localScale = Vector3.one * (0.8f * k);
+            _photo.transform.localScale = Vector3.one * (0.66f * k);
             _label.transform.position = transform.position + up * (1.25f * k) + Vector3.up * 0.4f;
             NameAnchor = transform.position + Vector3.up * (0.75f * k);
             _label.transform.rotation = face;

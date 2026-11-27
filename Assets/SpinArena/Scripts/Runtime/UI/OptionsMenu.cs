@@ -221,7 +221,7 @@ namespace SpinArena
             Stepper("Perte d'énergie naturelle", () => t.spinDecay, v => t.spinDecay = v, 0.25f, 3f, 0.05f, Pct);
             Stepper("Vitesse des toupies", () => t.speed, v => t.speed = v, 0.5f, 2f, 0.05f, Pct);
             Stepper("Élan au lancement", () => t.launchPower, v => t.launchPower = v, 3f, 15f, 0.5f, F1);
-            Stepper("Taille des toupies", () => t.topScale, v => t.topScale = v, 0.8f, 2.2f, 0.05f, v => (v / 1.55f * 100f).ToString("0") + " %");
+            Stepper("Taille des toupies", () => t.topScale, v => t.topScale = v, 1.2f, 3.6f, 0.1f, v => (v / 2.7f * 100f).ToString("0") + " %");
             Header("Pouvoirs et événements");
             Stepper("Rayon des ondes de choc", () => fx.shockwaveRadius, v => fx.shockwaveRadius = v, 2f, 8f, 0.5f, v => v.ToString("0.0") + " m");
             Stepper("Dégâts des ondes de choc", () => fx.shockwaveDamage, v => fx.shockwaveDamage = v, 0f, 0.2f, 0.01f, Pct);
